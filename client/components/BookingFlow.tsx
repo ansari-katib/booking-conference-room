@@ -84,7 +84,7 @@ const allConferenceRooms: ConferenceRoom[] = [
   },
 ];
 
-// Mock booked rooms - simulating some rooms are booked at certain times
+// Mock booked rooms
 interface BookedRooms {
   [date: string]: {
     [time: string]: string[];
@@ -120,10 +120,17 @@ const timeSlots = [
 export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>("");
-  const [availableRooms, setAvailableRooms] = useState<
-    ConferenceRoomWithStatus[]
-  >([]);
+  const [availableRooms, setAvailableRooms] = useState<ConferenceRoomWithStatus[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
+
+  // Format date as YYYY-MM-DD (local)
+  function formatDateLocal(date: Date | undefined) {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -137,7 +144,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     setSelectedRoom("");
 
     if (selectedDate) {
-      const dateKey = selectedDate.toLocaleDateString("en-CA");
+      const dateKey = formatDateLocal(selectedDate);
       const booked = bookedRooms[dateKey]?.[time] || [];
 
       // Map rooms with booked status
@@ -151,38 +158,44 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   };
 
   const handleBookRoom = () => {
-    if (selectedRoom && selectedDate && selectedTime) {
-      const dateKey = selectedDate.toLocaleDateString("en-CA");
-      const alreadyBooked = bookedRooms[dateKey]?.[selectedTime] || [];
+    if (!selectedRoom || !selectedDate || !selectedTime) return;
 
-      if (alreadyBooked.includes(selectedRoom)) {
-        alert(
-          "This room is already booked at the selected time. Please choose another room or time."
-        );
-        return;
-      }
+    const dateKey = formatDateLocal(selectedDate);
+    const alreadyBooked = bookedRooms[dateKey]?.[selectedTime] || [];
 
-      const room = availableRooms.find((r) => r.id === selectedRoom);
-      if (room) {
-        // Update mock bookedRooms dynamically
-        if (!bookedRooms[dateKey]) bookedRooms[dateKey] = {};
-        if (!bookedRooms[dateKey][selectedTime])
-          bookedRooms[dateKey][selectedTime] = [];
-        bookedRooms[dateKey][selectedTime].push(selectedRoom);
+    if (alreadyBooked.includes(selectedRoom)) {
+      alert(
+        "This room is already booked at the selected time. Please choose another room or time."
+      );
+      return;
+    }
 
-        const booking: Booking = {
-          roomName: room.name,
-          date: dateKey,
-          time: selectedTime,
-          capacity: room.capacity,
-          booked: true,
-          floor: room.floor,
-          amenities: room.amenities,
-        };
+    const room = availableRooms.find((r) => r.id === selectedRoom);
+    if (room) {
+      // Update bookedRooms dynamically
+      if (!bookedRooms[dateKey]) bookedRooms[dateKey] = {};
+      if (!bookedRooms[dateKey][selectedTime])
+        bookedRooms[dateKey][selectedTime] = [];
+      bookedRooms[dateKey][selectedTime].push(selectedRoom);
 
-        onConfirmBooking(booking);
-        onBack();
-      }
+      const booking: Booking = {
+        roomName: room.name,
+        date: dateKey,
+        time: selectedTime,
+        capacity: room.capacity,
+        booked: true,
+        floor: room.floor,
+        amenities: room.amenities,
+      };
+
+      onConfirmBooking(booking);
+
+      // Update available rooms to reflect booking immediately
+      const updatedRooms = availableRooms.map((r) =>
+        r.id === selectedRoom ? { ...r, booked: true } : r
+      );
+      setAvailableRooms(updatedRooms);
+      setSelectedRoom(""); // reset selection if needed
     }
   };
 
@@ -234,16 +247,13 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                     Select Time
                   </CardTitle>
                   <CardDescription>
-                    Selected: {selectedDate.toLocaleDateString()}
+                    Selected: {formatDateLocal(selectedDate)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <Label>Time Slot</Label>
-                    <Select
-                      value={selectedTime}
-                      onValueChange={handleTimeSelect}
-                    >
+                    <Select value={selectedTime} onValueChange={handleTimeSelect}>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a time slot" />
                       </SelectTrigger>
@@ -273,7 +283,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                   <CardDescription>
                     {availableRooms.length} room
                     {availableRooms.length !== 1 ? "s" : ""} available for{" "}
-                    {selectedDate?.toLocaleDateString()} at {selectedTime}
+                    {formatDateLocal(selectedDate)} at {selectedTime}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -357,4 +367,3 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     </div>
   );
 }
-
