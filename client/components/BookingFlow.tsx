@@ -137,7 +137,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     setSelectedRoom("");
 
     if (selectedDate) {
-      const dateKey = selectedDate.toISOString().split("T")[0];
+      const dateKey = selectedDate.toLocaleDateString("en-CA");
       const booked = bookedRooms[dateKey]?.[time] || [];
 
       // Map rooms with booked status
@@ -357,3 +357,4 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     </div>
   );
 }
+
