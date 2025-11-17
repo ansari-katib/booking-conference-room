@@ -149,9 +149,10 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
       setAvailableRooms(roomsWithStatus);
     }
   };
+
   const handleBookRoom = () => {
     if (selectedRoom && selectedDate && selectedTime) {
-      const dateKey = selectedDate.toISOString().split("T")[0];
+      const dateKey = selectedDate.toLocaleDateString("en-CA");
       const alreadyBooked = bookedRooms[dateKey]?.[selectedTime] || [];
 
       if (alreadyBooked.includes(selectedRoom)) {

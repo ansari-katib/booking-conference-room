@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 
-const BASE_URL: string = process.env.NEXT_PUBLIC_API_URL || "/booking";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
