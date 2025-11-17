@@ -1,0 +1,17 @@
+{
+  "name": "booking-conference-room",
+  "version": "1.0.0",
+  "description": "Conference room booking app with NestJS backend and Next.js frontend",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix server && npm run build --prefix client",
+    "start": "npm run start:prod --prefix server",
+    "start:dev": " npm run start:dev --prefix server && npm run dev --prefix client"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

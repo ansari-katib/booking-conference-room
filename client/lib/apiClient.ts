@@ -1,21 +1,22 @@
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 
-const apiClient = axios.create({
-  baseURL: "http://localhost:5000/booking",
+const BASE_URL: string = process.env.NEXT_PUBLIC_API_URL || "/booking";
+
+const apiClient: AxiosInstance = axios.create({
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // include cookies if needed
 });
 
-// Optional: Add token interceptor if needed later
+// Optional: token interceptor
 // apiClient.interceptors.request.use((config) => {
 //   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-//   if (token) {
+//   if (token && config.headers) {
 //     config.headers.Authorization = `Bearer ${token}`;
 //   }
 //   return config;
 // });
 
 export default apiClient;
-
-

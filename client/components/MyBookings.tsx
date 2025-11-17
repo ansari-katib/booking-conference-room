@@ -100,7 +100,7 @@ export function MyBookings({ bookings, onBack, onCancelBooking }: MyBookingsProp
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onCancelBooking(booking._id)}>
+                          <AlertDialogAction onClick={() => onCancelBooking(booking._id!)}>
                             Cancel Booking
                           </AlertDialogAction>
                         </AlertDialogFooter>
