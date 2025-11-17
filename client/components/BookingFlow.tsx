@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -102,7 +102,7 @@ const bookedRooms: BookedRooms = {
   },
 };
 
-// Generate time slots from 8 AM to 6 PM
+// Time slots
 const timeSlots = [
   "08:00",
   "09:00",
@@ -123,7 +123,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [availableRooms, setAvailableRooms] = useState<ConferenceRoomWithStatus[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
 
-  // Format date as YYYY-MM-DD (local)
+  // Format date as YYYY-MM-DD
   function formatDateLocal(date: Date | undefined) {
     if (!date) return "";
     const year = date.getFullYear();
@@ -132,29 +132,35 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     return `${year}-${month}-${day}`;
   }
 
+  // Update availableRooms whenever selectedDate or selectedTime changes
+  useEffect(() => {
+    if (!selectedDate || !selectedTime) {
+      setAvailableRooms([]);
+      setSelectedRoom("");
+      return;
+    }
+
+    const dateKey = formatDateLocal(selectedDate);
+    const bookedAtTime = bookedRooms[dateKey]?.[selectedTime] || [];
+
+    const roomsWithStatus: ConferenceRoomWithStatus[] = allConferenceRooms.map(
+      (room) => ({
+        ...room,
+        booked: bookedAtTime.includes(room.id),
+      })
+    );
+
+    setAvailableRooms(roomsWithStatus);
+    setSelectedRoom("");
+  }, [selectedDate, selectedTime]);
+
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
     setSelectedTime("");
-    setAvailableRooms([]);
-    setSelectedRoom("");
   };
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
-    setSelectedRoom("");
-
-    if (selectedDate) {
-      const dateKey = formatDateLocal(selectedDate);
-      const booked = bookedRooms[dateKey]?.[time] || [];
-
-      // Map rooms with booked status
-      const roomsWithStatus = allConferenceRooms.map((room) => ({
-        ...room,
-        booked: booked.includes(room.id),
-      }));
-
-      setAvailableRooms(roomsWithStatus);
-    }
   };
 
   const handleBookRoom = () => {
@@ -164,20 +170,17 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     const alreadyBooked = bookedRooms[dateKey]?.[selectedTime] || [];
 
     if (alreadyBooked.includes(selectedRoom)) {
-      alert(
-        "This room is already booked at the selected time. Please choose another room or time."
-      );
+      alert("This room is already booked at the selected time.");
       return;
     }
 
+    // Update bookedRooms dynamically
+    if (!bookedRooms[dateKey]) bookedRooms[dateKey] = {};
+    if (!bookedRooms[dateKey][selectedTime]) bookedRooms[dateKey][selectedTime] = [];
+    bookedRooms[dateKey][selectedTime].push(selectedRoom);
+
     const room = availableRooms.find((r) => r.id === selectedRoom);
     if (room) {
-      // Update bookedRooms dynamically
-      if (!bookedRooms[dateKey]) bookedRooms[dateKey] = {};
-      if (!bookedRooms[dateKey][selectedTime])
-        bookedRooms[dateKey][selectedTime] = [];
-      bookedRooms[dateKey][selectedTime].push(selectedRoom);
-
       const booking: Booking = {
         roomName: room.name,
         date: dateKey,
@@ -190,12 +193,11 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
 
       onConfirmBooking(booking);
 
-      // Update available rooms to reflect booking immediately
-      const updatedRooms = availableRooms.map((r) =>
-        r.id === selectedRoom ? { ...r, booked: true } : r
+      // Update availableRooms immediately
+      setAvailableRooms((prev) =>
+        prev.map((r) => (r.id === selectedRoom ? { ...r, booked: true } : r))
       );
-      setAvailableRooms(updatedRooms);
-      setSelectedRoom(""); // reset selection if needed
+      setSelectedRoom("");
     }
   };
 
@@ -211,19 +213,16 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
 
         <div className="mb-8">
           <h1>Book a Conference Room</h1>
-          <p className="text-gray-600">
-            Select date, time, and choose from available rooms
-          </p>
+          <p className="text-gray-600">Select date, time, and choose from available rooms</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Date and Time Selection */}
+          {/* Date & Time */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="size-5" />
-                  Select Date
+                  <CalendarIcon className="size-5" /> Select Date
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -232,9 +231,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                   selected={selectedDate}
                   onSelect={handleDateSelect}
                   className="rounded-md border"
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 />
               </CardContent>
             </Card>
@@ -243,8 +240,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Clock className="size-5" />
-                    Select Time
+                    <Clock className="size-5" /> Select Time
                   </CardTitle>
                   <CardDescription>
                     Selected: {formatDateLocal(selectedDate)}
@@ -277,8 +273,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MapPin className="size-5" />
-                    Available Conference Rooms
+                    <MapPin className="size-5" /> Available Conference Rooms
                   </CardTitle>
                   <CardDescription>
                     {availableRooms.length} room
@@ -312,8 +307,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                           <h3 className="font-medium">{room.name}</h3>
                           <div className="flex items-center gap-4 mt-1 text-gray-600">
                             <span className="flex items-center gap-1">
-                              <Users className="size-4" />
-                              {room.capacity} people
+                              <Users className="size-4" /> {room.capacity} people
                             </span>
                             <span>Floor {room.floor}</span>
                           </div>
