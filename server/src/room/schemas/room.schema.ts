@@ -16,6 +16,7 @@ export class Room extends Document {
 
   @Prop({ type: [String], default: [] })
   amenities: string[];
+
 }
 
 export const RoomSchema = SchemaFactory.createForClass(Room);

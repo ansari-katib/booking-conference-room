@@ -25,4 +25,10 @@ export class AuthController {
     const login = await this.authService.loginUser(loginDto);
     return login;
   }
+
+  @Get('me/:id')
+  async currentUser(@Param('id') id: string) {
+    const user = await this.authService.getUserById(id);
+    return user;
+  }
 }

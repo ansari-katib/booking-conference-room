@@ -60,4 +60,10 @@ export class AuthService {
       access_token: token,
     };
   }
+
+  async getUserById(id:string) {
+    const user = await this.userService.getUserById(id);
+    return user ;
+  }
+
 }

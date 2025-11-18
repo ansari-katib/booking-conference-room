@@ -2,6 +2,29 @@ import apiClient from "./apiClient";
 import { Booking } from "@/types/booking";
 
 export const Api = {
+  //========= ME ========
+  currentUser: async (id: string) => {
+    try {
+      const res = await apiClient.get(`/auth/me/${id}`);
+      // console.log("current user in client : " ,res.data);
+      return res.data;
+    } catch (error) {
+      console.error("Fetch current user failed:", error);
+      throw error;
+    }
+  },
+
+  userBookedSlots: async (id: string) => {
+    try {
+      const res = await apiClient.get(`booking/current-user-slots/${id}`);
+      console.log(res.data);
+      return res.data;
+    } catch (error) {
+      console.error("Fetch user booked slots failed:", error);
+      throw error;
+    }
+  },
+
   // ========== AUTH ==========
   registerUser: async (userData: any) => {
     try {

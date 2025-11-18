@@ -1,10 +1,25 @@
+// components/booking/MyBookings.tsx
 "use client";
 
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Trash2 } from 'lucide-react';
-import { Booking } from '@/types/booking';
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  Trash2,
+} from "lucide-react";
+import { Booking } from "@/types/booking";
+import { Api } from "@/lib/ApiEndpoint";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,30 +30,63 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from './ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
+import { useCurrentUser } from "@/lib/currentUser";
 
-interface MyBookingsProps {
-  bookings: Booking[];
-  onBack: () => void;
-  onCancelBooking: (bookingId: string) => void;
-}
+export function MyBookings({ onBack }: { onBack: () => void }) {
+  const { userId, fullName, isLoading: userLoading } = useCurrentUser();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export function MyBookings({ bookings, onBack, onCancelBooking }: MyBookingsProps) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchBookings = async () => {
+      try {
+        setLoading(true);
+        const data = await Api.userBookedSlots(userId);
+        // Sort by date & time
+        const sorted = data.sort((a: Booking, b: Booking) => {
+          const dateA = new Date(`${a.date}T${a.time}`);
+          const dateB = new Date(`${b.date}T${b.time}`);
+          return dateA.getTime() - dateB.getTime();
+        });
+        setBookings(sorted);
+      } catch (err) {
+        console.error("Failed to load your bookings", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, [userId]);
+
+  const handleCancel = async (bookingId: string) => {
+    try {
+      await Api.remove(bookingId);
+      setBookings((prev) => prev.filter((b) => b._id !== bookingId));
+    } catch (err) {
+      alert("Failed to cancel booking");
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
-  const sortedBookings = [...bookings].sort((a, b) => {
-    const dateA = new Date(`${a.date}T${a.time}`);
-    const dateB = new Date(`${b.date}T${b.time}`);
-    return dateA.getTime() - dateB.getTime();
-  });
+  if (userLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <p>Loading your bookings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -51,30 +99,36 @@ export function MyBookings({ bookings, onBack, onCancelBooking }: MyBookingsProp
         </div>
 
         <div className="mb-8">
-          <h1>My Bookings</h1>
-          <p className="text-gray-600">View and manage your conference room reservations</p>
+          <h1 className="text-3xl font-bold">
+            My Bookings {fullName && `– ${fullName}`}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            View and cancel your conference room reservations
+          </p>
         </div>
 
-        {sortedBookings.length === 0 ? (
+        {bookings.length === 0 ? (
           <Card>
-            <CardContent className="pt-12 pb-12">
-              <div className="text-center">
-                <Calendar className="size-12 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-gray-500 mb-2">No bookings yet</h3>
-                <p className="text-gray-400 mb-6">You haven't made any conference room reservations</p>
-                <Button onClick={onBack}>Book a Conference Room</Button>
-              </div>
+            <CardContent className="pt-12 pb-12 text-center">
+              <Calendar className="size-12 mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-500 mb-2">
+                No bookings yet
+              </h3>
+              <p className="text-gray-400 mb-6">
+                You haven't reserved any conference rooms
+              </p>
+              <Button onClick={onBack}>Book a Room Now</Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {sortedBookings.map((booking) => (
-              <Card key={booking._id} className="hover:shadow-md transition-shadow">
+          <div className="space-y-6">
+            {bookings.map((booking) => (
+              <Card key={booking._id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>{booking.roomName}</CardTitle>
-                      <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      <CardTitle className="text-2xl">{booking.roomName}</CardTitle>
+                      <div className="mt-3 space-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Calendar className="size-4" />
                           {formatDate(booking.date)}
@@ -85,22 +139,30 @@ export function MyBookings({ bookings, onBack, onCancelBooking }: MyBookingsProp
                         </div>
                       </div>
                     </div>
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
                           <Trash2 className="size-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
+                          <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to cancel this booking for {booking.roomName} on {formatDate(booking.date)} at {booking.time}?
+                            Cancel your booking for <strong>{booking.roomName}</strong> on{" "}
+                            {formatDate(booking.date)} at {booking.time}?
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onCancelBooking(booking._id!)}>
+                          <AlertDialogCancel>Keep</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleCancel(booking._id!)}
+                          >
                             Cancel Booking
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -108,23 +170,28 @@ export function MyBookings({ bookings, onBack, onCancelBooking }: MyBookingsProp
                     </AlertDialog>
                   </div>
                 </CardHeader>
+
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center gap-2 text-gray-600">
+                  <div className="grid grid-cols-2 gap-6 mb-6 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
                       <Users className="size-4" />
-                      <span>Capacity: {booking.capacity} people</span>
+                      Capacity: {booking.capacity} people
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2">
                       <MapPin className="size-4" />
-                      <span>Floor {booking.floor}</span>
+                      Floor {booking.floor}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {booking.amenities.map((amenity) => (
-                      <Badge key={amenity} variant="outline">
-                        {amenity}
-                      </Badge>
-                    ))}
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold mb-3 text-gray-700">Amenities</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {booking.amenities.map((a) => (
+                        <Badge key={a} variant="outline">
+                          {a}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

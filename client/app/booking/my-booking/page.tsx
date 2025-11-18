@@ -24,7 +24,6 @@ const MyBooking = () => {
         setLoading(false);
       }
     };
-
     fetchBookings();
   }, []);
 
@@ -50,9 +49,9 @@ const MyBooking = () => {
         <p>Loading bookings...</p>
       ) : (
         <MyBookings
-          bookings={bookings}
+          // bookings={bookings}
           onBack={onBack}
-          onCancelBooking={onCancelBooking}
+          // onCancelBooking={onCancelBooking}
         />
       )}
     </div>

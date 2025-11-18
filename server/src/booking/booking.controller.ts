@@ -17,6 +17,11 @@ export class BookingController {
     return this.bookingService.findAll();
   }
 
+  @Get('current-user-slots/:id')
+  findAllSlotOfCurrentUser(@Param('id') id:string){
+    return this.bookingService.findAllSlotOfCurrentUser(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.bookingService.findOne(id);

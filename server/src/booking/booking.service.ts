@@ -16,6 +16,7 @@ export class BookingService {
   ) {}
 
   async create(createBookingDto: CreateBookingDto): Promise<Booking> {
+    // console.log(createBookingDto);
     const { roomName, date, time } = createBookingDto;
 
     // Check if a booking already exists
@@ -27,7 +28,6 @@ export class BookingService {
         'This room is already booked at the selected time. Please choose another time or room.',
       );
     }
-
     const booking = new this.bookingModel(createBookingDto);
     return booking.save();
   }
@@ -71,5 +71,12 @@ export class BookingService {
       console.error(error);
       throw new InternalServerErrorException('Failed to delete booking');
     }
+  }
+
+  async findAllSlotOfCurrentUser(userId: string): Promise<Booking[]> {
+    return this.bookingModel
+      .find({ userId, booked: true })
+      .sort({ date: 1, time: 1 })
+      .exec();
   }
 }
