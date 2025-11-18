@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { MyBookings } from "@/components/MyBookings";
 import { useRouter } from "next/navigation";
 import { Booking } from "@/types/booking";
-import { bookingApi } from "@/lib/bookingApi";
+import { Api } from "@/lib/ApiEndpoint";
 
 const MyBooking = () => {
   const router = useRouter();
@@ -15,7 +15,7 @@ const MyBooking = () => {
     const fetchBookings = async () => {
       try {
         setLoading(true);
-        const data = await bookingApi.getAll();
+        const data = await Api.getAll();
         setBookings(data);
       } catch (err) {
         console.error(err);
@@ -35,7 +35,7 @@ const MyBooking = () => {
   const onCancelBooking = async (bookingId: string) => {
     if (!confirm("Are you sure you want to cancel this booking?")) return;
     try {
-      await bookingApi.remove(bookingId);
+      await Api.remove(bookingId);
       setBookings(bookings.filter((b) => b._id !== bookingId));
       alert("Booking cancelled successfully.");
     } catch (err) {

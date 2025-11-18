@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
 interface LoginPageProps {
-  onLogin: () => void;
+  onLogin: (email: string, password: string) => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
@@ -17,7 +17,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      onLogin();
+      onLogin(email, password);   // <-- pass both values
     }
   };
 
@@ -41,6 +41,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 required
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -52,6 +53,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 required
               />
             </div>
+
             <Button type="submit" className="w-full">
               Login
             </Button>

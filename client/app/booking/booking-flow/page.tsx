@@ -3,7 +3,7 @@
 import React from "react";
 import { BookingFlow } from "@/components/BookingFlow";
 import { useRouter } from "next/navigation";
-import { bookingApi } from "@/lib/bookingApi";
+import { Api } from "@/lib/ApiEndpoint";
 
 const BookingFlowComponent = () => {
   const router = useRouter();
@@ -14,7 +14,7 @@ const BookingFlowComponent = () => {
 
   const onConfirmBooking = async (booking: any) => {
     try {
-      await bookingApi.create(booking);
+      await Api.create(booking);
       alert("Booking confirmed!");
       router.push("/booking/my-booking");
     } catch (err) {
