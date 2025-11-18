@@ -63,9 +63,7 @@ const timeSlots = [
 export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>("");
-  const [availableRooms, setAvailableRooms] = useState<
-    ConferenceRoomWithStatus[]
-  >([]);
+  const [availableRooms, setAvailableRooms] = useState<ConferenceRoomWithStatus[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>("");
   const [allRooms, setAllRooms] = useState<ConferenceRoom[]>([]);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
@@ -164,9 +162,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
 
         <div className="mb-8">
           <h1>Book a Conference Room</h1>
-          <p className="text-gray-600">
-            Select date, time, and choose from available rooms
-          </p>
+          <p className="text-gray-600">Select date, time, and choose from available rooms</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
@@ -175,8 +171,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="size-5" />
-                  Select Date
+                  <CalendarIcon className="size-5" /> Select Date
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -198,8 +193,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Clock className="size-5" />
-                    Select Time
+                    <Clock className="size-5" /> Select Time
                   </CardTitle>
                   <CardDescription>{formatDate(selectedDate)}</CardDescription>
                 </CardHeader>
@@ -256,8 +250,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                           <h3 className="font-medium">{room.name}</h3>
                           <div className="flex gap-4 text-gray-600 mt-1">
                             <span className="flex items-center gap-1">
-                              <Users className="size-4" />
-                              {room.capacity} people
+                              <Users className="size-4" /> {room.capacity} people
                             </span>
                             <span>Floor {room.floor}</span>
                           </div>
