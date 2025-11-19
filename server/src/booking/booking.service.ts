@@ -8,11 +8,13 @@ import { Model } from 'mongoose';
 import { Booking, BookingDocument } from './schemas/booking.schema';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class BookingService {
   constructor(
     @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
+    private readonly userService: UserService,
   ) {}
 
   async create(createBookingDto: CreateBookingDto): Promise<Booking> {
@@ -78,5 +80,20 @@ export class BookingService {
       .find({ userId, booked: true })
       .sort({ date: 1, time: 1 })
       .exec();
+  }
+
+  async findByRoom(roomName: string): Promise<any[]> {
+    const bookings = await this.bookingModel.find({ roomName, booked: true }).sort({ date: 1, time: 1 }).exec();
+  
+    // Join with user email
+    const bookingsWithEmail = await Promise.all(bookings.map(async (b) => {
+      if (b.userId) {
+        const user = await this.userService.getUserById(b.userId);
+        const email = user?.email || null;
+        return { ...b.toObject(), email };
+      }
+    }));
+  
+    return bookingsWithEmail;
   }
 }

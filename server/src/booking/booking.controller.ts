@@ -22,6 +22,11 @@ export class BookingController {
     return this.bookingService.findAllSlotOfCurrentUser(id);
   }
 
+  @Get('slots-by-room/:roomName')
+  findByRoom(@Param('roomName') roomName: string) {
+    return this.bookingService.findByRoom(roomName);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.bookingService.findOne(id);

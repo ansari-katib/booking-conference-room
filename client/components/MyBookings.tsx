@@ -137,6 +137,13 @@ export function MyBookings({ onBack }: { onBack: () => void }) {
                           <Clock className="size-4" />
                           {booking.time}
                         </div>
+                        {booking.email && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold italic text-blue-700">
+                              Booked by: {booking.email}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

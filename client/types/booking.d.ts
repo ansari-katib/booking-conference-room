@@ -7,4 +7,5 @@ export interface Booking {
   booked:boolean
   floor: number;
   amenities: string[];
+  email?: string;
 }

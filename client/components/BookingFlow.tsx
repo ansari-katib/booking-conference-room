@@ -77,6 +77,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [today, setToday] = useState<Date | undefined>(undefined);
   const [isClient, setIsClient] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [bookedSlotsByRoom, setBookedSlotsByRoom] = useState<Record<string, Booking | undefined>>({});
 
   // Fetch rooms, bookings and user ID from token
   useEffect(() => {
@@ -114,24 +115,27 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
 
   // Compute available rooms whenever date/time changes
   useEffect(() => {
-    if (!selectedDate || !selectedTime) {
-      setAvailableRooms([]);
-      return;
+    async function fetchRoomBookings() {
+      if (!selectedDate || !selectedTime) {
+        setBookedSlotsByRoom({});
+        return;
+      }
+      const dateKey = formatDate(selectedDate);
+      // For each room, fetch bookings for that room and get the one for selected date/time
+      const roomBookings: Record<string, Booking | undefined> = {};
+      for (const room of allRooms) {
+        try {
+          const bookings = await Api.getBookedSlotsByRoom(room.name);
+          const matched = bookings.find((b: Booking) => b.date === dateKey && b.time === selectedTime && b.booked);
+          roomBookings[room._id] = matched;
+        } catch (error) {
+          roomBookings[room._id] = undefined;
+        }
+      }
+      setBookedSlotsByRoom(roomBookings);
     }
-
-    const dateKey = formatDate(selectedDate);
-
-    const bookedRoomNames = allBookings
-      .filter((b) => b.date === dateKey && b.time === selectedTime && b.booked)
-      .map((b) => b.roomName);
-
-    const roomsWithStatus = allRooms.map((room) => ({
-      ...room,
-      booked: bookedRoomNames.includes(room.name),
-    }));
-
-    setAvailableRooms(roomsWithStatus);
-  }, [selectedDate, selectedTime, allBookings, allRooms]);
+    fetchRoomBookings();
+  }, [selectedDate, selectedTime, allRooms]);
 
   function formatDate(date: Date) {
     const y = date.getFullYear();
@@ -249,42 +253,50 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {availableRooms.map((room) => (
-                    <div
-                      key={room._id}
-                      className={`p-4 border rounded-lg transition-all mb-4 cursor-pointer ${
-                        selectedRoom === room._id
-                          ? "border-blue-500 bg-blue-50"
-                          : room.booked
-                          ? "border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                      onClick={() => !room.booked && setSelectedRoom(room._id)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-medium">{room.name}</h3>
-                          <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Users className="size-4" />
-                              {room.capacity} people
-                            </span>
-                            <span>Floor {room.floor}</span>
+                  {allRooms.map((room) => {
+                    const booking = bookedSlotsByRoom[room._id];
+                    const isBooked = !!booking;
+                    return (
+                      <div
+                        key={room._id}
+                        className={`p-4 border rounded-lg transition-all mb-4 cursor-pointer ${
+                          selectedRoom === room._id
+                            ? "border-blue-500 bg-blue-50"
+                            : isBooked
+                            ? "border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                        onClick={() => !isBooked && setSelectedRoom(room._id)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h3 className="font-medium">{room.name}</h3>
+                            <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                              <span className="flex items-center gap-1">
+                                <Users className="size-4" />
+                                {room.capacity} people
+                              </span>
+                              <span>Floor {room.floor}</span>
+                            </div>
+                            {isBooked && booking && booking.email && (
+                              <div className="mt-2 text-xs text-red-700 italic font-medium">
+                                Booked by: {booking.email}
+                              </div>
+                            )}
                           </div>
+                          {selectedRoom === room._id && <Badge>Selected</Badge>}
+                          {isBooked && <Badge variant="outline">Booked</Badge>}
                         </div>
-                        {selectedRoom === room._id && <Badge>Selected</Badge>}
-                        {room.booked && <Badge variant="outline">Booked</Badge>}
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          {room.amenities.map((a) => (
+                            <Badge key={a} variant="outline">
+                              {a}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-
-                      <div className="flex flex-wrap gap-1 mt-3">
-                        {room.amenities.map((a) => (
-                          <Badge key={a} variant="outline">
-                            {a}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {selectedRoom && (
                     <Button

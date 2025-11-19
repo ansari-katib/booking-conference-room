@@ -153,4 +153,15 @@ export const Api = {
       throw err;
     }
   },
+
+  getBookedSlotsByRoom: async (roomName: string) => {
+    try {
+      const res = await apiClient.get(`/booking/slots-by-room/${roomName}`);
+      console.log("res.data : ", res.data);
+      return res.data;
+    } catch (err) {
+      console.error("Get booked slots by room failed:", err);
+      throw err;
+    }
+  },
 };
