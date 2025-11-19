@@ -24,6 +24,7 @@ import {
   Clock,
   MapPin,
   Users,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Api } from "@/lib/ApiEndpoint";
@@ -78,10 +79,13 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [isClient, setIsClient] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [bookedSlotsByRoom, setBookedSlotsByRoom] = useState<Record<string, Booking | undefined>>({});
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Fetch rooms, bookings and user ID from token
   useEffect(() => {
     async function loadData() {
+      setLoadingRooms(true);
       try {
         const [rooms, bookings] = await Promise.all([
           Api.getAllRooms(),
@@ -92,6 +96,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
       } catch (err) {
         console.error("Failed to load data", err);
       }
+      setLoadingRooms(false);
     }
 
     const token = Cookies.get("access_token");
@@ -120,6 +125,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
         setBookedSlotsByRoom({});
         return;
       }
+      setLoadingSlots(true);
       const dateKey = formatDate(selectedDate);
       // For each room, fetch bookings for that room and get the one for selected date/time
       const roomBookings: Record<string, Booking | undefined> = {};
@@ -133,6 +139,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
         }
       }
       setBookedSlotsByRoom(roomBookings);
+      setLoadingSlots(false);
     }
     fetchRoomBookings();
   }, [selectedDate, selectedTime, allRooms]);
@@ -197,15 +204,23 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
               </CardHeader>
               <CardContent>
                 {isClient ? (
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-md border"
-                    disabled={(date) => !!today && date < today}
-                  />
+                  loadingRooms ? (
+                    <div className="flex justify-center items-center h-24">
+                      <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+                    </div>
+                  ) : (
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      className="rounded-md border"
+                      disabled={(date) => !!today && date < today}
+                    />
+                  )
                 ) : (
-                  <p>Loading calendar...</p>
+                  <div className="flex justify-center items-center h-24">
+                    <Loader2 className="animate-spin w-8 h-8 text-gray-400" />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -221,19 +236,27 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                   <CardDescription>{formatDate(selectedDate)}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Label>Time Slot</Label>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a time slot" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {loadingRooms ? (
+                    <div className="flex justify-center items-center h-16">
+                      <Loader2 className="animate-spin w-6 h-6 text-gray-400" />
+                    </div>
+                  ) : (
+                    <>
+                      <Label>Time Slot</Label>
+                      <Select value={selectedTime} onValueChange={setSelectedTime}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a time slot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -249,56 +272,64 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                     Available Rooms
                   </CardTitle>
                   <CardDescription>
-                    {availableRooms.filter((r) => !r.booked).length} rooms available
+                    {allRooms.filter((r) => {
+                      const booking = bookedSlotsByRoom[r._id];
+                      return !booking;
+                    }).length} rooms available
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {allRooms.map((room) => {
-                    const booking = bookedSlotsByRoom[room._id];
-                    const isBooked = !!booking;
-                    return (
-                      <div
-                        key={room._id}
-                        className={`p-4 border rounded-lg transition-all mb-4 cursor-pointer ${
-                          selectedRoom === room._id
-                            ? "border-blue-500 bg-blue-50"
-                            : isBooked
-                            ? "border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
-                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                        }`}
-                        onClick={() => !isBooked && setSelectedRoom(room._id)}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h3 className="font-medium">{room.name}</h3>
-                            <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                              <span className="flex items-center gap-1">
-                                <Users className="size-4" />
-                                {room.capacity} people
-                              </span>
-                              <span>Floor {room.floor}</span>
-                            </div>
-                            {isBooked && booking && booking.email && (
-                              <div className="mt-2 text-xs text-red-700 italic font-medium">
-                                Booked by: {booking.email}
+                  {loadingSlots ? (
+                    <div className="flex justify-center items-center h-24">
+                      <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+                    </div>
+                  ) : (
+                    allRooms.map((room) => {
+                      const booking = bookedSlotsByRoom[room._id];
+                      const isBooked = !!booking;
+                      return (
+                        <div
+                          key={room._id}
+                          className={`p-4 border rounded-lg transition-all mb-4 cursor-pointer ${
+                            selectedRoom === room._id
+                              ? "border-blue-500 bg-blue-50"
+                              : isBooked
+                              ? "border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
+                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                          onClick={() => !isBooked && setSelectedRoom(room._id)}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h3 className="font-medium">{room.name}</h3>
+                              <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Users className="size-4" />
+                                  {room.capacity} people
+                                </span>
+                                <span>Floor {room.floor}</span>
                               </div>
-                            )}
+                              {isBooked && booking && booking.email && (
+                                <div className="mt-2 text-xs text-red-700 italic font-medium">
+                                  Booked by: {booking.email}
+                                </div>
+                              )}
+                            </div>
+                            {selectedRoom === room._id && <Badge>Selected</Badge>}
+                            {isBooked && <Badge variant="outline">Booked</Badge>}
                           </div>
-                          {selectedRoom === room._id && <Badge>Selected</Badge>}
-                          {isBooked && <Badge variant="outline">Booked</Badge>}
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {room.amenities.map((a) => (
+                              <Badge key={a} variant="outline">
+                                {a}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-3">
-                          {room.amenities.map((a) => (
-                            <Badge key={a} variant="outline">
-                              {a}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {selectedRoom && (
+                      );
+                    })
+                  )}
+                  {selectedRoom && !loadingSlots && (
                     <Button
                       className="w-full mt-6"
                       onClick={handleBookRoom}

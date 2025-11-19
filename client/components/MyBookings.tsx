@@ -17,6 +17,7 @@ import {
   MapPin,
   Users,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { Booking } from "@/types/booking";
 import { Api } from "@/lib/ApiEndpoint";
@@ -83,7 +84,8 @@ export function MyBookings({ onBack }: { onBack: () => void }) {
   if (userLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
-        <p>Loading your bookings...</p>
+        <Loader2 className="animate-spin w-10 h-10 text-gray-400" />
+        <span className="ml-4 text-gray-600 text-lg">Loading your bookings...</span>
       </div>
     );
   }
