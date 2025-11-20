@@ -45,10 +45,6 @@ interface ConferenceRoom {
   amenities: string[];
 }
 
-interface ConferenceRoomWithStatus extends ConferenceRoom {
-  booked: boolean;
-}
-
 interface DecodedToken {
   email: string;
   sub: string;
@@ -72,9 +68,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>("");
-  const [availableRooms, setAvailableRooms] = useState<ConferenceRoomWithStatus[]>([]);
   const [allRooms, setAllRooms] = useState<ConferenceRoom[]>([]);
-  const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [today, setToday] = useState<Date | undefined>(undefined);
   const [isClient, setIsClient] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -87,12 +81,8 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     async function loadData() {
       setLoadingRooms(true);
       try {
-        const [rooms, bookings] = await Promise.all([
-          Api.getAllRooms(),
-          Api.getAll(),
-        ]);
+        const rooms = await Api.getAllRooms();
         setAllRooms(rooms);
-        setAllBookings(bookings);
       } catch (err) {
         console.error("Failed to load data", err);
       }
@@ -123,6 +113,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     async function fetchRoomBookings() {
       if (!selectedDate || !selectedTime) {
         setBookedSlotsByRoom({});
+        setLoadingSlots(false);
         return;
       }
       setLoadingSlots(true);

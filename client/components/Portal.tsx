@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -9,44 +8,19 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Calendar, Users, LogOut , User } from "lucide-react";
+import { Calendar, Users, LogOut, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { jwtDecode } from "jwt-decode";
-import { Api } from "@/lib/ApiEndpoint";
+import { useCurrentUser } from "@/lib/currentUser";
 
 interface PortalProps {
   onBookConferenceRoom: () => void;
   onViewBookings: () => void;
 }
 
-interface DecodedToken {
-  email: string;
-  sub: string;
-  // add other fields if present
-}
-
 export function Portal({ onBookConferenceRoom, onViewBookings }: PortalProps) {
   const router = useRouter();
-  const [userName, setUserName] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<string>("");
-
-  useEffect(() => {
-    const token = Cookies.get("access_token");
-    if (token) {
-      try {
-        const decoded: DecodedToken = jwtDecode(token);
-        const userId = decoded.sub; 
-        console.log("userid : ", userId); 
-        setCurrentUser(userId);
-        Api.currentUser(userId)
-          .then((data) => setUserName(data.fullName))
-          .catch((err) => console.error("Failed to fetch user data:", err));
-      } catch (err) {
-        console.error("Invalid token", err);
-      }
-    }
-  }, []); // Reruns on mount
+  const { fullName, role, isLoading } = useCurrentUser();
 
   const handleLogout = () => {
     Cookies.remove("access_token", { path: "/" });
@@ -63,8 +37,10 @@ export function Portal({ onBookConferenceRoom, onViewBookings }: PortalProps) {
             <p className="text-gray-600">Manage your meeting room bookings</p>
           </div>
           <div className="flex items-center gap-4">
-            {userName && (
-              <span className="font-medium text-gray-700 bg-neutral-200 p-2 rounded-md">Hi, {userName}</span>
+            {!isLoading && fullName && (
+              <span className="font-medium text-gray-700 bg-neutral-200 p-2 rounded-md">
+                Hi, {fullName}
+              </span>
             )}
             <Button
               variant="destructive"
@@ -77,7 +53,11 @@ export function Portal({ onBookConferenceRoom, onViewBookings }: PortalProps) {
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div
+          className={`grid gap-6 ${
+            role === "admin" ? "md:grid-cols-3" : "md:grid-cols-2"
+          }`}
+        >
           <Card
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={onBookConferenceRoom}
@@ -132,6 +112,30 @@ export function Portal({ onBookConferenceRoom, onViewBookings }: PortalProps) {
               </Button>
             </CardContent>
           </Card>
+
+          {role === "admin" && (
+            <Card
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => router.push("/admin")}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Shield className="size-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <CardTitle>Admin Console</CardTitle>
+                    <CardDescription>Manage rooms, bookings, and roles</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline">
+                  Go to Admin
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

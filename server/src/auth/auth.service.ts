@@ -7,6 +7,7 @@ import { UserService } from '../user/user.service';
 import { loginDto, registerDTO } from './dto/registerUser.dto';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
+import { IProfile } from 'passport-azure-ad';
 
 @Injectable()
 export class AuthService {
@@ -19,31 +20,15 @@ export class AuthService {
     const saltRound = 10;
     const hash = await bcrypt.hash(registerDto.password, saltRound);
 
-    // logic for user register.
-    /**
-     * 1. check if email already exists
-     * 2. hash the password
-     * 3. store the user into db
-     * 4. generate jwt token
-     * 5. send token in response
-     */
-
     const user = await this.userService.createUser({
       ...registerDto,
       password: hash,
     });
 
-    const payload = { sub: user?._id };
-    const token = await this.jwtService.signAsync(payload);
-    return { access_token: token };
+    return this.generateTokenResponse(user, 'registered successfully');
   }
 
   async loginUser(loginDto: loginDto) {
-    /**
-     * 1. receive email and password
-     * 2. match email and password
-     * 3. generate jwt token
-     */
     const { email, password } = loginDto;
 
     const user = await this.userService.findByEmail(email);
@@ -52,18 +37,90 @@ export class AuthService {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new UnauthorizedException('Invalid credentials');
 
-    const payload = { sub: user?._id };
-    const token = await this.jwtService.signAsync(payload);
+    return this.generateTokenResponse(user, 'login successfully');
+  }
 
+  async getUserById(id: string) {
+    const user = await this.userService.getUserById(id);
+    return user;
+  }
+
+  private buildPayload(user: any) {
     return {
-      message: 'login successfully',
-      access_token: token,
+      sub: user?._id,
+      role: user?.role ?? 'user',
+      email: user?.email,
+      fullName: user?.fullName,
     };
   }
 
-  async getUserById(id:string) {
-    const user = await this.userService.getUserById(id);
-    return user ;
+  private async generateTokenResponse(user: any, message = 'success') {
+    const payload = this.buildPayload(user);
+    const access_token = await this.jwtService.signAsync(payload);
+    return {
+      message,
+      access_token,
+      user: payload,
+    };
   }
 
+  private resolveRoleFromProfile(profile: IProfile) {
+    const adminRoleFromEnv = process.env.AZURE_ADMIN_ROLE ?? 'Admin';
+    const roles =
+      (profile._json as Record<string, any>)?.roles ||
+      (profile._json as Record<string, any>)?.groups ||
+      [];
+    if (Array.isArray(roles) && roles.includes(adminRoleFromEnv)) {
+      return 'admin';
+    }
+    return 'user';
+  }
+
+  async findOrCreateAzureUser(profile: IProfile) {
+    const email =
+      profile?._json?.preferred_username ||
+      profile?._json?.email ||
+      profile?.upn;
+    if (!email) {
+      throw new UnauthorizedException('Azure profile missing email');
+    }
+    const azureId = profile?.oid || profile?.sub;
+    const role = this.resolveRoleFromProfile(profile);
+
+    let user = azureId
+      ? await this.userService.findByAzureId(azureId)
+      : await this.userService.findByEmail(email);
+
+    if (user) {
+      let shouldSave = false;
+      if (!user.azureId && azureId) {
+        user.azureId = azureId;
+        shouldSave = true;
+      }
+      if (user.role !== role) {
+        user.role = role;
+        shouldSave = true;
+      }
+      if (shouldSave) {
+        await user.save();
+      }
+      return user;
+    }
+
+    return this.userService.createAzureUser({
+      fullName: profile?.displayName || email,
+      email,
+      azureId,
+      role,
+    });
+  }
+
+  async generateAzureLoginResponse(user: any) {
+    const payload = this.buildPayload(user);
+    const token = await this.jwtService.signAsync(payload);
+    return {
+      token,
+      user: payload,
+    };
+  }
 }

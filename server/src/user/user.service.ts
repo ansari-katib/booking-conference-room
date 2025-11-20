@@ -14,6 +14,7 @@ export class UserService {
         fullName: registerDto.fullName,
         email: registerDto.email,
         password: registerDto.password,
+        role: registerDto?.role ?? 'user',
       });
     } catch (error) {
       const DUPLICATE_KEY_CODE = 11000;
@@ -30,5 +31,33 @@ export class UserService {
 
   async getUserById(id: string) {
     return this.userModel.findById({ _id: id });
+  }
+
+  async findByAzureId(azureId: string) {
+    return this.userModel.findOne({ azureId });
+  }
+
+  async createAzureUser(data: {
+    fullName: string;
+    email: string;
+    azureId?: string;
+    role?: string;
+  }) {
+    try {
+      return await this.userModel.create({
+        fullName: data.fullName,
+        email: data.email,
+        password: '',
+        role: data.role ?? 'user',
+        azureId: data.azureId,
+      });
+    } catch (error) {
+      const DUPLICATE_KEY_CODE = 11000;
+      if (error.code === DUPLICATE_KEY_CODE) {
+        const field = Object.keys(error.keyPattern)[0];
+        throw new ConflictException(`${field} is already registerd`);
+      }
+      throw error;
+    }
   }
 }

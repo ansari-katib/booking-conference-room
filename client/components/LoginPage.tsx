@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Shield } from "lucide-react";
 
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -35,6 +35,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       }
     }
   };
+
+  const azureLoginUrl = `${
+    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+  }/auth/azure/login`;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -81,6 +85,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                          {" "}
             </Button>
           </form>
+          <div className="mt-6">
+            <Button asChild variant="outline" className="w-full">
+              <a href={azureLoginUrl}>
+                <Shield className="mr-2 h-4 w-4" />
+                Login with Microsoft
+              </a>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

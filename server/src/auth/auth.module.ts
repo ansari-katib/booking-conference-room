@@ -4,12 +4,15 @@ import { AuthController } from './auth.controller';
 import { UserModule } from '../user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import { AzureStrategy } from './azure.strategy';
 
 const day = 60 * 60 * 24; // 1 day in seconds
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    PassportModule.register({}),
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,
@@ -17,7 +20,7 @@ const day = 60 * 60 * 24; // 1 day in seconds
     }),
     UserModule,
   ],
-  providers: [AuthService],
+  providers: [AuthService, AzureStrategy],
   controllers: [AuthController],
 })
 export class AuthModule {}

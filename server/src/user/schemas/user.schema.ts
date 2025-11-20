@@ -13,7 +13,12 @@ export class User {
 
   @Prop({ required: true })
   password: string;
-  
+
+  @Prop({ default: 'user' })
+  role: string;
+
+  @Prop({ unique: true, sparse: true, required: false })
+  azureId?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

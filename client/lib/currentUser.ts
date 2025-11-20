@@ -7,12 +7,14 @@ import { Api } from "@/lib/ApiEndpoint";
 interface DecodedToken {
   sub: string;
   email?: string;
+  role?: string;
 }
 
 interface CurrentUser {
   userId: string;
   fullName: string | null;
   email: string | null;
+  role: string | null;
   isLoading: boolean;
 }
 
@@ -21,6 +23,7 @@ export function useCurrentUser(): CurrentUser {
     userId: "",
     fullName: null,
     email: null,
+    role: null,
     isLoading: true,
   });
 
@@ -28,7 +31,13 @@ export function useCurrentUser(): CurrentUser {
     const token = Cookies.get("access_token");
 
     if (!token) {
-      setUser({ userId: "", fullName: null, email: null, isLoading: false });
+      setUser({
+        userId: "",
+        fullName: null,
+        email: null,
+        role: null,
+        isLoading: false,
+      });
       return;
     }
 
@@ -43,6 +52,7 @@ export function useCurrentUser(): CurrentUser {
             userId,
             fullName: data.fullName || data.name || "User",
             email: data.email || null,
+            role: data.role || decoded.role || "user",
             isLoading: false,
           });
         })
@@ -52,11 +62,18 @@ export function useCurrentUser(): CurrentUser {
             userId,
             fullName: "User",
             email: decoded.email || null,
+            role: decoded.role || "user",
             isLoading: false,
           });
         });
     } catch (err) {
-      setUser({ userId: "", fullName: null, email: null, isLoading: false });
+      setUser({
+        userId: "",
+        fullName: null,
+        email: null,
+        role: null,
+        isLoading: false,
+      });
     }
   }, []);
 
