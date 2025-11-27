@@ -36,10 +36,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     }
   };
 
-  const azureLoginUrl = `${
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
-  }/auth/azure/login`;
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
@@ -85,14 +81,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                          {" "}
             </Button>
           </form>
-          <div className="mt-6">
-            <Button asChild variant="outline" className="w-full">
-              <a href={azureLoginUrl}>
-                <Shield className="mr-2 h-4 w-4" />
-                Login with Microsoft
-              </a>
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

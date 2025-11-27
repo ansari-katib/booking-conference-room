@@ -9,10 +9,10 @@ export class Booking {
   roomName: string;
 
   @Prop({ required: true })
-  date: string; // YYYY-MM-DD format
+  date: string;
 
   @Prop({ required: true })
-  time: string; // e.g. "10:00 AM"
+  time: string;
 
   @Prop({ required: true })
   capacity: number;

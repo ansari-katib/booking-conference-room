@@ -50,19 +50,17 @@ interface DecodedToken {
   sub: string;
 }
 
-const timeSlots = [
-  "08:00",
-  "09:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-];
+// Generate time slots from 8:00 AM to 10:00 PM (22:00) in hourly increments
+const generateTimeSlots = (): string[] => {
+  const slots: string[] = [];
+  for (let hour = 8; hour <= 22; hour++) {
+    const time = `${hour.toString().padStart(2, "0")}:00`;
+    slots.push(time);
+  }
+  return slots;
+};
+
+const timeSlots = generateTimeSlots();
 
 export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -142,6 +140,14 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
     return `${y}-${m}-${d}`;
   }
 
+  // Format time to 12-hour format with AM/PM
+  function formatTimeDisplay(time: string): string {
+    const [hour] = time.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${displayHour.toString().padStart(2, "0")}:00 ${period}`;
+  }
+
   const handleBookRoom = () => {
     if (!selectedRoom || !selectedDate || !selectedTime || !currentUserId) {
       console.error("Missing required booking data or user ID");
@@ -162,7 +168,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
       userId: currentUserId,
     };
 
-    console.log("booking data : " ,booking);
+    console.log("booking data : " , booking);
     onConfirmBooking(booking);
   };
 
@@ -233,15 +239,15 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                     </div>
                   ) : (
                     <>
-                      <Label>Time Slot</Label>
+                      <Label>Time Slot (8:00 AM - 10:00 PM)</Label>
                       <Select value={selectedTime} onValueChange={setSelectedTime}>
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a time slot" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-60">
                           {timeSlots.map((time) => (
                             <SelectItem key={time} value={time}>
-                              {time}
+                              {formatTimeDisplay(time)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -266,7 +272,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                     {allRooms.filter((r) => {
                       const booking = bookedSlotsByRoom[r._id];
                       return !booking;
-                    }).length} rooms available
+                    }).length} rooms available at {formatTimeDisplay(selectedTime)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
