@@ -36,12 +36,19 @@ function buildRangeForList(dateStr = "", time = "") {
     if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
     return new Date().toISOString().slice(0, 10);
   })();
-  const parts = time.split("-").map(s => s.trim()).filter(Boolean);
+  const parts = time
+    .split("-")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const start = parts[0] ? to24HourSimple(parts[0]) : "00:00";
-  const end = parts[1] ? to24HourSimple(parts[1]) : (() => {
-    const [h, m] = start.split(":").map(Number);
-    return `${((h + 1) % 24).toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-  })();
+  const end = parts[1]
+    ? to24HourSimple(parts[1])
+    : (() => {
+        const [h, m] = start.split(":").map(Number);
+        return `${((h + 1) % 24).toString().padStart(2, "0")}:${m
+          .toString()
+          .padStart(2, "0")}`;
+      })();
   const s = new Date(`${dateIso}T${start}:00`);
   const e = new Date(`${dateIso}T${end}:00`);
   if (e <= s) e.setDate(e.getDate() + 1);
@@ -49,7 +56,10 @@ function buildRangeForList(dateStr = "", time = "") {
 }
 
 function formatHHMM(d: Date) {
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  return `${d.getHours().toString().padStart(2, "0")}:${d
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 export function BookedRooms() {
@@ -64,11 +74,13 @@ export function BookedRooms() {
         if (!mounted) return;
         const now = new Date();
 
-        const booked = (Array.isArray(data) ? data : []).filter((b: any) => b.booked === true);
+        const booked = (Array.isArray(data) ? data : []).filter(
+          (b: any) => b.booked === true
+        );
 
         // initial items with loading flag for entries that have userId
         const initial: BookedRoomItem[] = booked.map((b: any) => {
-          const dateStr = b.date || new Date().toISOString().slice(0,10);
+          const dateStr = b.date || new Date().toISOString().slice(0, 10);
           const timeRaw = b.time || "";
           const { s, e } = buildRangeForList(dateStr, timeRaw);
           const timeFormatted = `${formatHHMM(s)} - ${formatHHMM(e)}`;
@@ -100,12 +112,16 @@ export function BookedRooms() {
             try {
               const user = await Api.currentUser(b.userId);
               if (!mounted) return;
-              setItems(prev =>
-                prev.map(it =>
+              setItems((prev) =>
+                prev.map((it) =>
                   it.id === (b._id || b.id)
                     ? {
                         ...it,
-                        personName: user?.fullName || user?.name || user?.email || it.personName,
+                        personName:
+                          user?.fullName ||
+                          user?.name ||
+                          user?.email ||
+                          it.personName,
                         email: user?.email || it.email,
                         loading: false,
                       }
@@ -114,8 +130,8 @@ export function BookedRooms() {
               );
             } catch (err) {
               if (!mounted) return;
-              setItems(prev =>
-                prev.map(it =>
+              setItems((prev) =>
+                prev.map((it) =>
                   it.id === (b._id || b.id) ? { ...it, loading: false } : it
                 )
               );
@@ -130,23 +146,44 @@ export function BookedRooms() {
 
     load();
     const t = setInterval(load, 60_000);
-    return () => { mounted = false; clearInterval(t); };
+    return () => {
+      mounted = false;
+      clearInterval(t);
+    };
   }, []);
 
-  // Separate ongoing and upcoming rooms
-  const ongoingRooms = items.filter(room => room.status === "ongoing");
-  const upcomingRooms = items.filter(room => room.status === "upcoming");
+
+  // show only the bookings belonging to selected room
+  const SELECTED_ROOM = "Board Room A";
+  const filteredByRoom = items.filter((r) => r.roomName === SELECTED_ROOM);
+
+  // Separate ongoing and upcoming for ONLY this room
+  const ongoingRooms = filteredByRoom.filter(
+    (room) => room.status === "ongoing"
+  );
+  const upcomingRooms = filteredByRoom.filter(
+    (room) => room.status === "upcoming"
+  );
+
   const sortedItems = [...ongoingRooms, ...upcomingRooms];
 
   const renderRoomCard = (room: BookedRoomItem, isOngoing: boolean) => (
     <div
       key={room.id || `${room.roomName}-${room.date}`}
-      className={`border-l-4 rounded-lg p-4 transition-all hover:shadow-md ${isOngoing ? "border-red-500 bg-red-50 shadow-md" : "border-red-300 bg-red-50/50"}`}
+      className={`border-l-4 rounded-lg p-4 transition-all hover:shadow-md ${
+        isOngoing
+          ? "border-red-500 bg-red-50 shadow-md"
+          : "border-red-300 bg-red-50/50"
+      }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-2 h-2 rounded-full ${isOngoing ? 'bg-red-500 animate-pulse' : 'bg-red-400'}`}></div>
+            <div
+              className={`w-2 h-2 rounded-full ${
+                isOngoing ? "bg-red-500 animate-pulse" : "bg-red-400"
+              }`}
+            ></div>
             <span className="text-xs text-red-600 uppercase tracking-wide font-semibold">
               {isOngoing ? "🔴 In Progress" : "Booked"}
             </span>
@@ -184,7 +221,7 @@ export function BookedRooms() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-gray-900">Booked Rooms</h2>
         <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
-          {items.length} Active
+          {filteredByRoom.length} Active
         </span>
       </div>
 
@@ -198,7 +235,7 @@ export function BookedRooms() {
                   <h3 className="text-sm font-bold text-red-600 uppercase tracking-widest mb-3">
                     Currently In Progress
                   </h3>
-                  {ongoingRooms.map(room => renderRoomCard(room, true))}
+                  {ongoingRooms.map((room) => renderRoomCard(room, true))}
                 </div>
               </>
             )}
@@ -211,7 +248,7 @@ export function BookedRooms() {
                     Upcoming Bookings
                   </h3>
                   <div className="space-y-4">
-                    {upcomingRooms.map(room => renderRoomCard(room, false))}
+                    {upcomingRooms.map((room) => renderRoomCard(room, false))}
                   </div>
                 </div>
               </>

@@ -18,14 +18,6 @@ interface Booking {
   loading?: boolean;
 }
 
-const fallbackRooms = [
-  "Executive Board Room",
-  "Meeting Room A",
-  "Conference Hall",
-  "Meeting Room B",
-  "Meeting Room C",
-];
-
 function to24Hour(timePart: string) {
   const t = timePart.trim();
   const ampm = /(\d{1,2}:\d{2})\s*(AM|PM)/i.exec(t);
@@ -52,7 +44,10 @@ function buildRange(dateStr: string, timeStr: string) {
     return today.toISOString().slice(0, 10);
   })();
 
-  const parts = timeStr.split("-").map((p) => p.trim()).filter(Boolean);
+  const parts = timeStr
+    .split("-")
+    .map((p) => p.trim())
+    .filter(Boolean);
   const startPart = parts[0] || "00:00";
   let endPart = parts[1];
 
@@ -60,7 +55,9 @@ function buildRange(dateStr: string, timeStr: string) {
   if (!endPart) {
     const [h, m] = start24.split(":").map(Number);
     const endH = (h + 1) % 24;
-    endPart = `${endH.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+    endPart = `${endH.toString().padStart(2, "0")}:${m
+      .toString()
+      .padStart(2, "0")}`;
   } else {
     endPart = to24Hour(endPart);
   }
@@ -76,7 +73,9 @@ function formatTimeDisplay(date: Date) {
   const m = date.getMinutes();
   const period = h >= 12 ? "PM" : "AM";
   const displayHour = h % 12 === 0 ? 12 : h % 12;
-  return `${displayHour.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${period}`;
+  return `${displayHour.toString().padStart(2, "0")}:${m
+    .toString()
+    .padStart(2, "0")} ${period}`;
 }
 
 export function AvailableRooms() {
@@ -98,39 +97,55 @@ export function AvailableRooms() {
           personName: b.personName || "Unknown",
           email: b.email || undefined,
           capacity: b.capacity,
-          booked: !!b.booked,
+          booked: b.booked || false,
           loading: !!b.userId,
         }));
         setBookings(mapped);
+        console.log("booking data  : ", mapped);
       })
       .catch((err) => {
         console.error("Failed to load bookings", err);
       });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
     const evaluate = () => {
       const now = new Date();
       const todayIso = now.toISOString().slice(0, 10);
+      const SELECTED_ROOM = "Board Room A";
 
-      const todays = bookings.filter(b => b.booked === true).filter(b => {
+      // filter bookings only for this room
+      const roomABookings = bookings.filter(
+        (b) => b.roomName === SELECTED_ROOM
+      );
+
+      // filter today's bookings
+      const todaysBookings = roomABookings.filter((b) => {
         const d = new Date(b.date);
-        if (!isNaN(d.getTime())) return d.toISOString().slice(0,10) === todayIso;
-        return b.date === todayIso || b.date === now.toLocaleDateString();
+        if (!isNaN(d.getTime()))
+          return d.toISOString().slice(0, 10) === todayIso;
+        return b.date === todayIso;
       });
 
-      const ranges = todays.map(b => {
-        try {
-          const r = buildRange(b.date, b.time);
-          return { booking: b, start: r.start, end: r.end };
-        } catch {
-          return null;
-        }
-      }).filter(Boolean) as { booking: Booking; start: Date; end: Date }[];
+      // create ranges
+      const ranges = todaysBookings
+        .map((b) => {
+          try {
+            const { start, end } = buildRange(b.date, b.time);
+            return { booking: b, start, end };
+          } catch {
+            return null;
+          }
+        })
+        .filter(
+          (r): r is { booking: Booking; start: Date; end: Date } => r !== null
+        );
 
-      const ongoing = ranges.filter(r => now >= r.start && now < r.end)
-        .sort((a,b) => a.start.getTime() - b.start.getTime())[0];
+      // 1️⃣ CURRENT MEETING (highest priority)
+      const ongoing = ranges.find((r) => now >= r.start && now < r.end);
 
       if (ongoing) {
         setCurrentBooking(ongoing.booking);
@@ -138,8 +153,18 @@ export function AvailableRooms() {
         return;
       }
 
-      const next = ranges.filter(r => r.start > now)
-        .sort((a,b) => a.start.getTime() - b.start.getTime())[0];
+      // 2️⃣ booked:true but NOT ongoing
+      const explicitlyBooked = todaysBookings.find((b) => b.booked === true);
+      if (explicitlyBooked) {
+        setCurrentBooking(explicitlyBooked);
+        setIsBooked(true);
+        return;
+      }
+
+      // 3️⃣ NEXT MEETING (future)
+      const next = ranges
+        .filter((r) => r.start > now)
+        .sort((a, b) => a.start.getTime() - b.start.getTime())[0];
 
       if (next) {
         setCurrentBooking(next.booking);
@@ -147,11 +172,13 @@ export function AvailableRooms() {
         return;
       }
 
+      // 4️⃣ Available
       setCurrentBooking({
-        roomName: fallbackRooms[0],
+        roomName: SELECTED_ROOM,
         date: todayIso,
         time: "",
       } as Booking);
+
       setIsBooked(false);
     };
 
@@ -168,27 +195,44 @@ export function AvailableRooms() {
     Api.currentUser(currentBooking.userId)
       .then((user: any) => {
         if (!mounted) return;
-        setCurrentBooking(prev => prev ? {
-          ...prev,
-          personName: user?.fullName || user?.name || user?.email || prev.personName,
-          email: user?.email || prev.email,
-          loading: false,
-        } : prev);
+        setCurrentBooking((prev) =>
+          prev
+            ? {
+                ...prev,
+                personName:
+                  user?.fullName ||
+                  user?.name ||
+                  user?.email ||
+                  prev.personName,
+                email: user?.email || prev.email,
+                loading: false,
+              }
+            : prev
+        );
       })
       .catch(() => {
         if (!mounted) return;
-        setCurrentBooking(prev => prev ? { ...prev, loading: false } : prev);
+        setCurrentBooking((prev) =>
+          prev ? { ...prev, loading: false } : prev
+        );
       });
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [currentBooking?.userId]);
 
   const displayStartEnd = (() => {
     if (!currentBooking || !currentBooking.time) return { start: "", end: "" };
     try {
-      const { start, end } = buildRange(currentBooking.date || new Date().toISOString().slice(0,10), currentBooking.time);
+      const { start, end } = buildRange(
+        currentBooking.date || new Date().toISOString().slice(0, 10),
+        currentBooking.time
+      );
       return { start: formatTimeDisplay(start), end: formatTimeDisplay(end) };
-    } catch { return { start: "", end: "" }; }
+    } catch {
+      return { start: "", end: "" };
+    }
   })();
 
   return (
@@ -196,33 +240,67 @@ export function AvailableRooms() {
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-gray-900">Room Status</h2>
         <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full animate-pulse ${isBooked ? 'bg-red-500' : 'bg-green-500'}`}></div>
-          <span className={`px-4 py-1.5 rounded-full ${isBooked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {isBooked ? 'Occupied / Next' : 'Available Now'}
+          <div
+            className={`w-3 h-3 rounded-full animate-pulse ${
+              isBooked ? "bg-red-500" : "bg-green-500"
+            }`}
+          ></div>
+          <span
+            className={`px-4 py-1.5 rounded-full ${
+              isBooked
+                ? "bg-red-100 text-red-700"
+                : "bg-green-100 text-green-700"
+            }`}
+          >
+            {isBooked ? "Occupied / Next" : "Available Now"}
           </span>
         </div>
       </div>
 
-      <div className={`border-2 rounded-xl p-8 transition-all shadow-lg ${isBooked ? "border-red-400 bg-red-50" : "border-green-400 bg-green-50"}`}>
+      <div
+        className={`border-2 rounded-xl p-8 transition-all shadow-lg ${
+          isBooked ? "border-red-400 bg-red-50" : "border-green-400 bg-green-50"
+        }`}
+      >
         <div className="mb-6 pb-4 border-b-2 border-gray-200">
-          <h3 className="text-gray-900 mb-3 text-2xl font-semibold">{currentBooking?.roomName}</h3>
-          <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow-md ${isBooked ? 'bg-red-500' : 'bg-green-500'}`}>
-            <div className={`w-2 h-2 rounded-full bg-white ${isBooked ? '' : 'animate-pulse'}`}></div>
-            {isBooked ? (currentBooking?.time ? `${displayStartEnd.start} - ${displayStartEnd.end}` : "Booked") : 'Available Now'}
+          <h3 className="text-gray-900 mb-3 text-2xl font-semibold">
+            {currentBooking?.roomName}
+          </h3>
+          <span
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow-md ${
+              isBooked ? "bg-red-500" : "bg-green-500"
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full bg-white ${
+                isBooked ? "" : "animate-pulse"
+              }`}
+            ></div>
+            {isBooked
+              ? currentBooking?.time
+                ? `${displayStartEnd.start} - ${displayStartEnd.end}`
+                : "Booked"
+              : "Available Now"}
           </span>
         </div>
 
-        <div className={`rounded-lg p-4 mb-6 shadow-sm ${isBooked ? 'bg-red-100/50' : 'bg-green-100/50'}`}>
-          <div className="flex items-center text-gray-700">
-            <div className={`p-3 rounded-lg mr-3 ${isBooked ? 'bg-red-200' : 'bg-green-200'}`}>
-              <Clock className={`w-6 h-6 ${isBooked ? 'text-red-700' : 'text-green-700'}`} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 font-medium">Current Time</p>
-              <p className="text-gray-900 font-semibold">{formatTimeDisplay(new Date())}</p>
+        {!isBooked && (
+          <div className="rounded-lg p-4 mb-6 bg-green-100/50 shadow-sm">
+            <div className="flex items-center text-gray-700">
+              <div className="p-3 rounded-lg bg-green-200 mr-3">
+                <Clock className="w-6 h-6 text-green-700" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-medium">
+                  Current Time
+                </p>
+                <p className="text-gray-900 font-semibold">
+                  {formatTimeDisplay(new Date())}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {isBooked && currentBooking?.time ? (
           <div className="space-y-3">
@@ -237,7 +315,11 @@ export function AvailableRooms() {
                     {currentBooking.loading ? (
                       <Loader2 className="w-4 h-4 text-red-600 animate-spin" />
                     ) : null}
-                    <p className="text-gray-900 font-semibold">{currentBooking.personName || currentBooking.userId || "Unknown"}</p>
+                    <p className="text-gray-900 font-semibold">
+                      {currentBooking.personName ||
+                        currentBooking.userId ||
+                        "Unknown"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -249,8 +331,12 @@ export function AvailableRooms() {
                   <Mail className="w-6 h-6 text-red-700" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-600 font-medium">Contact Email</p>
-                  <p className="text-gray-900 font-semibold truncate">{currentBooking.email || "—"}</p>
+                  <p className="text-xs text-gray-600 font-medium">
+                    Contact Email
+                  </p>
+                  <p className="text-gray-900 font-semibold truncate">
+                    {currentBooking.email || "—"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -261,8 +347,12 @@ export function AvailableRooms() {
                   <Clock className="w-6 h-6 text-red-700" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 font-medium">Booking Duration</p>
-                  <p className="text-gray-900 font-semibold">{displayStartEnd.start} - {displayStartEnd.end}</p>
+                  <p className="text-xs text-gray-600 font-medium">
+                    Booking Duration
+                  </p>
+                  <p className="text-gray-900 font-semibold">
+                    {displayStartEnd.start} - {displayStartEnd.end}
+                  </p>
                 </div>
               </div>
             </div>
@@ -270,12 +360,26 @@ export function AvailableRooms() {
         ) : (
           <div className="bg-green-100/60 rounded-lg p-8 shadow-sm text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-200 mb-4">
-              <svg className="w-10 h-10 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-10 h-10 text-green-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
-            <h4 className="text-gray-900 mb-2 text-xl font-semibold">Room Available</h4>
-            <p className="text-gray-700 font-medium">This room is ready for your next meeting</p>
+            <h4 className="text-gray-900 mb-2 text-xl font-semibold">
+              Room Available
+            </h4>
+            <p className="text-gray-700 font-medium">
+              This room is ready for your next meeting
+            </p>
           </div>
         )}
       </div>
