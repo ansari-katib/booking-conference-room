@@ -7,8 +7,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors({
     origin: [
-      // 'https://booking-conference-room-alpha.vercel.app' , 
-      "http://localhost:3000"
+      'https://booking-conference-room-alpha.vercel.app' , 
+      // "http://localhost:3000"
     ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
