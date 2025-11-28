@@ -78,30 +78,44 @@ export function BookedRooms() {
           (b: any) => b.booked === true
         );
 
-        // initial items with loading flag for entries that have userId
-        const initial: BookedRoomItem[] = booked.map((b: any) => {
+        // ✅ FIX: Filter out all bookings that have already finished (e <= now)
+        const futureOrOngoingBookings = booked.filter((b: any) => {
+          // Temporarily calculate the range to determine if it's over
           const dateStr = b.date || new Date().toISOString().slice(0, 10);
           const timeRaw = b.time || "";
-          const { s, e } = buildRangeForList(dateStr, timeRaw);
-          const timeFormatted = `${formatHHMM(s)} - ${formatHHMM(e)}`;
-
-          let status: BookedRoomItem["status"] = "upcoming";
-          if (now >= s && now < e) status = "ongoing";
-          else if (s > now) status = "upcoming";
-
-          return {
-            id: b._id || b.id,
-            roomName: b.roomName,
-            date: dateStr,
-            time: timeFormatted,
-            personName: b.personName || "Unknown",
-            email: b.email || null,
-            status,
-            booked: !!b.booked,
-            userId: b.userId,
-            loading: !!b.userId,
-          } as BookedRoomItem;
+          const { e } = buildRangeForList(dateStr, timeRaw);
+          return e > now;
         });
+
+        // initial items with loading flag for entries that have userId
+        const initial: BookedRoomItem[] = futureOrOngoingBookings.map(
+          (b: any) => {
+            const dateStr = b.date || new Date().toISOString().slice(0, 10);
+            const timeRaw = b.time || "";
+            const { s, e } = buildRangeForList(dateStr, timeRaw);
+            const timeFormatted = `${formatHHMM(s)} - ${formatHHMM(e)}`;
+
+            let status: BookedRoomItem["status"] = "upcoming";
+            // Check for ongoing first
+            if (now >= s && now < e) status = "ongoing";
+            // Since we filtered out past bookings, the rest are upcoming
+            // or were ongoing (if we're running late on the interval).
+            // For simplicity, we can rely on the initial 'upcoming' for non-ongoing.
+
+            return {
+              id: b._id || b.id,
+              roomName: b.roomName,
+              date: dateStr,
+              time: timeFormatted,
+              personName: b.personName || "Unknown",
+              email: b.email || null,
+              status,
+              booked: !!b.booked,
+              userId: b.userId,
+              loading: !!b.userId,
+            } as BookedRoomItem;
+          }
+        );
 
         setItems(initial);
 

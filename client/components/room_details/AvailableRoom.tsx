@@ -111,26 +111,25 @@ export function AvailableRooms() {
     };
   }, []);
 
+  // ... existing code ...
+
   useEffect(() => {
     const evaluate = () => {
       const now = new Date();
       const todayIso = now.toISOString().slice(0, 10);
-      const SELECTED_ROOM = "Board Room A";
+      const SELECTED_ROOM = "Board Room A"; // filter bookings only for this room
 
-      // filter bookings only for this room
       const roomABookings = bookings.filter(
         (b) => b.roomName === SELECTED_ROOM
-      );
+      ); // filter today's bookings
 
-      // filter today's bookings
       const todaysBookings = roomABookings.filter((b) => {
         const d = new Date(b.date);
         if (!isNaN(d.getTime()))
           return d.toISOString().slice(0, 10) === todayIso;
         return b.date === todayIso;
-      });
+      }); // create ranges
 
-      // create ranges
       const ranges = todaysBookings
         .map((b) => {
           try {
@@ -142,50 +141,33 @@ export function AvailableRooms() {
         })
         .filter(
           (r): r is { booking: Booking; start: Date; end: Date } => r !== null
-        );
+        ); // 1️⃣ CURRENT MEETING (ONLY PRIORITY)
+      // NOTE: We don't need the .filter((r) => r.end > now) here,
+      // because the 'ongoing' check below covers it perfectly.
 
-      // 1️⃣ CURRENT MEETING (highest priority)
       const ongoing = ranges.find((r) => now >= r.start && now < r.end);
 
       if (ongoing) {
         setCurrentBooking(ongoing.booking);
-        setIsBooked(true);
+        setIsBooked(true); // Red Status: Booked now
         return;
-      }
+      } // 2️⃣ Available (Default) // If no ongoing meeting was found, reset to available status.
 
-      // 2️⃣ booked:true but NOT ongoing
-      const explicitlyBooked = todaysBookings.find((b) => b.booked === true);
-      if (explicitlyBooked) {
-        setCurrentBooking(explicitlyBooked);
-        setIsBooked(true);
-        return;
-      }
-
-      // 3️⃣ NEXT MEETING (future)
-      const next = ranges
-        .filter((r) => r.start > now)
-        .sort((a, b) => a.start.getTime() - b.start.getTime())[0];
-
-      if (next) {
-        setCurrentBooking(next.booking);
-        setIsBooked(true);
-        return;
-      }
-
-      // 4️⃣ Available
       setCurrentBooking({
         roomName: SELECTED_ROOM,
         date: todayIso,
         time: "",
       } as Booking);
 
-      setIsBooked(false);
+      setIsBooked(false); // Green Status: Available Now
     };
 
     evaluate();
     const t = setInterval(evaluate, 30_000);
     return () => clearInterval(t);
   }, [bookings]);
+
+  // ... rest of the code is unchanged
 
   // fetch user info if userId present
   useEffect(() => {
