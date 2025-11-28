@@ -9,9 +9,11 @@ import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { RoomModule } from './room/room.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(process.env.MONGO_URL as string),
     BookingModule,
