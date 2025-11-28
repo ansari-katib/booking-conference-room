@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Booking } from './schemas/booking.schema';
@@ -13,7 +12,6 @@ export class BookingCleanupService {
     private bookingModel: Model<Booking>,
   ) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
   async removeExpiredBookings() {
     const now = new Date();
 
@@ -38,19 +36,15 @@ export class BookingCleanupService {
   }
 
   private getStartEnd(date: string, time: string) {
-    // time format is always "HH:mm" based on your DB
-    let startStr = time.trim();
-
-    // auto-add 1 hour (your booking has NO end time)
-    const [h, m] = startStr.split(':').map(Number);
+    const [h, m] = time.trim().split(':').map(Number);
     const endH = (h + 1) % 24;
 
-    const endStr = `${endH.toString().padStart(2, '0')}:${m
-      .toString()
-      .padStart(2, '0')}`;
-
-    const start = new Date(`${date}T${startStr}:00`);
-    const end = new Date(`${date}T${endStr}:00`);
+    const start = new Date(`${date}T${time.trim()}:00`);
+    const end = new Date(
+      `${date}T${endH.toString().padStart(2, '0')}:${m
+        .toString()
+        .padStart(2, '0')}:00`,
+    );
 
     return { start, end };
   }
