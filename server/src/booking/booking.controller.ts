@@ -19,6 +19,13 @@ export class BookingController {
     private readonly bookingCleanupService: BookingCleanupService,
   ) {}
 
+  // ✅ MUST BE ABOVE the dynamic ':id' route
+  @Get('cleanup')
+  async runCleanup() {
+    await this.bookingCleanupService.removeExpiredBookings();
+    return { success: true, message: 'Cleanup executed' };
+  }
+
   @Post('book-slot')
   create(@Body() createBookingDto: CreateBookingDto) {
     return this.bookingService.create(createBookingDto);
@@ -37,13 +44,6 @@ export class BookingController {
   @Get('slots-by-room/:roomName')
   findByRoom(@Param('roomName') roomName: string) {
     return this.bookingService.findByRoom(roomName);
-  }
-
-  // ✅ MUST BE ABOVE the dynamic ':id' route
-  @Get('cleanup')
-  async runCleanup() {
-    await this.bookingCleanupService.removeExpiredBookings();
-    return { success: true, message: 'Cleanup executed' };
   }
 
   @Get(':id')

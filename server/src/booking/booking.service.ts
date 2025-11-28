@@ -83,17 +83,22 @@ export class BookingService {
   }
 
   async findByRoom(roomName: string): Promise<any[]> {
-    const bookings = await this.bookingModel.find({ roomName, booked: true }).sort({ date: 1, time: 1 }).exec();
-  
+    const bookings = await this.bookingModel
+      .find({ roomName, booked: true })
+      .sort({ date: 1, time: 1 })
+      .exec();
+
     // Join with user email
-    const bookingsWithEmail = await Promise.all(bookings.map(async (b) => {
-      if (b.userId) {
-        const user = await this.userService.getUserById(b.userId);
-        const email = user?.email || null;
-        return { ...b.toObject(), email };
-      }
-    }));
-  
+    const bookingsWithEmail = await Promise.all(
+      bookings.map(async (b) => {
+        if (b.userId) {
+          const user = await this.userService.getUserById(b.userId);
+          const email = user?.email || null;
+          return { ...b.toObject(), email };
+        }
+      }),
+    );
+
     return bookingsWithEmail;
   }
 }

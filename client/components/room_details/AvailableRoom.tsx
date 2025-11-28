@@ -85,7 +85,7 @@ export function AvailableRooms() {
 
   useEffect(() => {
     let mounted = true;
-    Api.getAll()
+    Api.getBookedSlotsByRoom("Board Room A")
       .then((data: any[]) => {
         if (!mounted) return;
         const mapped = (Array.isArray(data) ? data : []).map((b: any) => ({

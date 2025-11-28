@@ -51,16 +51,19 @@ interface DecodedToken {
 }
 
 // Generate time slots from 8:00 AM to 10:00 PM (22:00) in hourly increments
-const generateTimeSlots = (): string[] => {
-  const slots: string[] = [];
-  for (let hour = 8; hour <= 22; hour++) {
-    const time = `${hour.toString().padStart(2, "0")}:00`;
-    slots.push(time);
+// Generate time slots as ranges (8AM–10PM)
+const generateTimeRanges = (start = 8, end = 22): string[] => {
+  const ranges: string[] = [];
+  for (let hour = start; hour < end; hour++) {
+    const startH = hour.toString().padStart(2, "0");
+    const endH = (hour + 1).toString().padStart(2, "0");
+    ranges.push(`${startH}:00 - ${endH}:00`);
   }
-  return slots;
+  return ranges;
 };
 
-const timeSlots = generateTimeSlots();
+const timeSlots = generateTimeRanges();
+
 
 export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -70,7 +73,9 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   const [today, setToday] = useState<Date | undefined>(undefined);
   const [isClient, setIsClient] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [bookedSlotsByRoom, setBookedSlotsByRoom] = useState<Record<string, Booking | undefined>>({});
+  const [bookedSlotsByRoom, setBookedSlotsByRoom] = useState<
+    Record<string, Booking | undefined>
+  >({});
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
@@ -121,7 +126,10 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
       for (const room of allRooms) {
         try {
           const bookings = await Api.getBookedSlotsByRoom(room.name);
-          const matched = bookings.find((b: Booking) => b.date === dateKey && b.time === selectedTime && b.booked);
+          const matched = bookings.find(
+            (b: Booking) =>
+              b.date === dateKey && b.time === selectedTime && b.booked
+          );
           roomBookings[room._id] = matched;
         } catch (error) {
           roomBookings[room._id] = undefined;
@@ -141,11 +149,16 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
   }
 
   // Format time to 12-hour format with AM/PM
-  function formatTimeDisplay(time: string): string {
-    const [hour] = time.split(":").map(Number);
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-    return `${displayHour.toString().padStart(2, "0")}:00 ${period}`;
+  function formatTimeDisplay(range: string): string {
+    const [start, end] = range.split("-").map((t) => t.trim());
+
+    const format = (time: string) => {
+      const [hour, minute] = time.split(":").map(Number);
+      const period = hour >= 12 ? "PM" : "AM";
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+    };
+    return `${format(start)} - ${format(end)}`;
   }
 
   const handleBookRoom = () => {
@@ -168,7 +181,7 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
       userId: currentUserId,
     };
 
-    console.log("booking data : " , booking);
+    console.log("booking data : ", booking);
     onConfirmBooking(booking);
   };
 
@@ -240,7 +253,10 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                   ) : (
                     <>
                       <Label>Time Slot (8:00 AM - 10:00 PM)</Label>
-                      <Select value={selectedTime} onValueChange={setSelectedTime}>
+                      <Select
+                        value={selectedTime}
+                        onValueChange={setSelectedTime}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a time slot" />
                         </SelectTrigger>
@@ -269,10 +285,13 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                     Available Rooms
                   </CardTitle>
                   <CardDescription>
-                    {allRooms.filter((r) => {
-                      const booking = bookedSlotsByRoom[r._id];
-                      return !booking;
-                    }).length} rooms available at {formatTimeDisplay(selectedTime)}
+                    {
+                      allRooms.filter((r) => {
+                        const booking = bookedSlotsByRoom[r._id];
+                        return !booking;
+                      }).length
+                    }{" "}
+                    rooms available at {formatTimeDisplay(selectedTime)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -312,8 +331,12 @@ export function BookingFlow({ onBack, onConfirmBooking }: BookingFlowProps) {
                                 </div>
                               )}
                             </div>
-                            {selectedRoom === room._id && <Badge>Selected</Badge>}
-                            {isBooked && <Badge variant="outline">Booked</Badge>}
+                            {selectedRoom === room._id && (
+                              <Badge>Selected</Badge>
+                            )}
+                            {isBooked && (
+                              <Badge variant="outline">Booked</Badge>
+                            )}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-3">
                             {room.amenities.map((a) => (

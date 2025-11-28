@@ -70,7 +70,7 @@ export function BookedRooms() {
 
     async function load() {
       try {
-        const data = await Api.getAll();
+        const data = await Api.getBookedSlotsByRoom("Board Room A");
         if (!mounted) return;
         const now = new Date();
 
@@ -151,7 +151,6 @@ export function BookedRooms() {
       clearInterval(t);
     };
   }, []);
-
 
   // show only the bookings belonging to selected room
   const SELECTED_ROOM = "Board Room A";
