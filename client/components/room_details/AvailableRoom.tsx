@@ -1,4 +1,3 @@
-// ...existing code...
 "use client";
 
 import { Clock, User, Mail, Loader2 } from "lucide-react";
@@ -8,14 +7,17 @@ import { Api } from "../../lib/ApiEndpoint";
 interface Booking {
   id?: string;
   roomName: string;
-  date: string;
+  date?: string;
   time: string;
   userId?: string;
   personName?: string;
   email?: string;
   capacity?: number;
   booked?: boolean;
-  loading?: boolean;
+}
+
+interface AvailableRoomsProps {
+  roomName?: string;
 }
 
 function to24Hour(timePart: string) {
@@ -36,14 +38,16 @@ function to24Hour(timePart: string) {
   return t;
 }
 
-function buildRange(dateStr: string, timeStr: string) {
-  const today = new Date();
-  const dateIso = (() => {
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-    return today.toISOString().slice(0, 10);
-  })();
+function normalizeDateIso(dateStr?: string) {
+  if (!dateStr) return new Date().toISOString().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
+}
 
+function buildRange(dateStr: string, timeStr: string) {
+  const dateIso = normalizeDateIso(dateStr);
   const parts = timeStr
     .split("-")
     .map((p) => p.trim())
@@ -78,144 +82,283 @@ function formatTimeDisplay(date: Date) {
     .padStart(2, "0")} ${period}`;
 }
 
-export function AvailableRooms() {
+export function AvailableRooms({ roomName }: AvailableRoomsProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [currentBooking, setCurrentBooking] = useState<Booking | null>(null);
+  const [nextBooking, setNextBooking] = useState<{
+    booking: Booking;
+    start: Date;
+    end: Date;
+  } | null>(null);
+  const [currentWindow, setCurrentWindow] = useState<{
+    start: Date;
+    end: Date;
+  } | null>(null);
   const [isBooked, setIsBooked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(new Date());
 
   useEffect(() => {
-    let mounted = true;
-    Api.getBookedSlotsByRoom("Board Room A")
-      .then((data: any[]) => {
-        if (!mounted) return;
-        const mapped = (Array.isArray(data) ? data : []).map((b: any) => ({
-          id: b._id || b.id,
-          roomName: b.roomName,
-          date: b.date,
-          time: b.time || "",
-          userId: b.userId,
-          personName: b.personName || "Unknown",
-          email: b.email || undefined,
-          capacity: b.capacity,
-          booked: b.booked || false,
-          loading: !!b.userId,
-        }));
-        setBookings(mapped);
-        console.log("booking data  : ", mapped);
-      })
-      .catch((err) => {
-        console.error("Failed to load bookings", err);
-      });
-    return () => {
-      mounted = false;
-    };
+    const timer = setInterval(() => setNowTick(new Date()), 30_000);
+    return () => clearInterval(timer);
   }, []);
 
-  // ... existing code ...
+  useEffect(() => {
+    if (!roomName) {
+      setBookings([]);
+      setCurrentBooking(null);
+      setNextBooking(null);
+      setCurrentWindow(null);
+      setIsBooked(false);
+      return;
+    }
+
+    let mounted = true;
+
+    const load = async (showSpinner = false) => {
+      if (showSpinner) setIsLoading(true);
+      setError(null);
+      try {
+        const data = await Api.getBookedSlotsByRoom(roomName);
+        if (!mounted) return;
+        const mapped = (Array.isArray(data) ? data : [])
+          .filter(Boolean)
+          .map((b: any) => ({
+            id: b._id || b.id,
+            roomName: b.roomName,
+            date: b.date,
+            time: b.time || "",
+            userId: b.userId,
+            personName:
+              b.personName ||
+              b.user?.fullName ||
+              b.user?.email ||
+              b.email ||
+              b.userId ||
+              "Unknown",
+            email: b.email || b.user?.email || undefined,
+            capacity: b.capacity,
+            booked: b.booked || false,
+          }));
+        setBookings(mapped);
+      } catch (err) {
+        if (!mounted) return;
+        console.error("Failed to load bookings", err);
+        setError("Unable to fetch booking status right now.");
+        setBookings([]);
+      } finally {
+        if (showSpinner && mounted) setIsLoading(false);
+      }
+    };
+
+    load(true);
+    const interval = setInterval(() => load(false), 60_000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [roomName]);
 
   useEffect(() => {
+    if (!roomName) return;
+
     const evaluate = () => {
       const now = new Date();
       const todayIso = now.toISOString().slice(0, 10);
-      const SELECTED_ROOM = "Board Room A"; // filter bookings only for this room
 
-      const roomABookings = bookings.filter(
-        (b) => b.roomName === SELECTED_ROOM
-      ); // filter today's bookings
-
-      const todaysBookings = roomABookings.filter((b) => {
-        const d = new Date(b.date);
-        if (!isNaN(d.getTime()))
-          return d.toISOString().slice(0, 10) === todayIso;
-        return b.date === todayIso;
-      }); // create ranges
-
-      const ranges = todaysBookings
+      const todaysBookings = bookings
+        .filter((b) => b.roomName === roomName)
+        .filter((b) => normalizeDateIso(b.date) === todayIso)
         .map((b) => {
           try {
-            const { start, end } = buildRange(b.date, b.time);
+            const { start, end } = buildRange(b.date || todayIso, b.time);
             return { booking: b, start, end };
           } catch {
             return null;
           }
         })
         .filter(
-          (r): r is { booking: Booking; start: Date; end: Date } => r !== null
-        ); // 1️⃣ CURRENT MEETING (ONLY PRIORITY)
-      // NOTE: We don't need the .filter((r) => r.end > now) here,
-      // because the 'ongoing' check below covers it perfectly.
+          (entry): entry is { booking: Booking; start: Date; end: Date } =>
+            entry !== null && entry.end > now
+        );
 
-      const ongoing = ranges.find((r) => now >= r.start && now < r.end);
+      const ongoing = todaysBookings.find(
+        (entry) => now >= entry.start && now < entry.end
+      );
+
+      const next =
+        todaysBookings
+          .filter((entry) => entry.start > now)
+          .sort((a, b) => a.start.getTime() - b.start.getTime())[0] ?? null;
 
       if (ongoing) {
         setCurrentBooking(ongoing.booking);
-        setIsBooked(true); // Red Status: Booked now
-        return;
-      } // 2️⃣ Available (Default) // If no ongoing meeting was found, reset to available status.
+        setCurrentWindow({ start: ongoing.start, end: ongoing.end });
+        setIsBooked(true);
+      } else {
+        setCurrentBooking(null);
+        setCurrentWindow(null);
+        setIsBooked(false);
+      }
 
-      setCurrentBooking({
-        roomName: SELECTED_ROOM,
-        date: todayIso,
-        time: "",
-      } as Booking);
-
-      setIsBooked(false); // Green Status: Available Now
+      setNextBooking(next);
     };
 
     evaluate();
-    const t = setInterval(evaluate, 30_000);
-    return () => clearInterval(t);
-  }, [bookings]);
+    const timer = setInterval(evaluate, 30_000);
+    return () => clearInterval(timer);
+  }, [bookings, roomName]);
 
-  // ... rest of the code is unchanged
+  const displayStartEnd = currentWindow
+    ? {
+        start: formatTimeDisplay(currentWindow.start),
+        end: formatTimeDisplay(currentWindow.end),
+      }
+    : { start: "", end: "" };
 
-  // fetch user info if userId present
-  useEffect(() => {
-    if (!currentBooking?.userId || !currentBooking.loading) return;
-    let mounted = true;
+  const nextWindow = nextBooking
+    ? {
+        start: formatTimeDisplay(nextBooking.start),
+        end: formatTimeDisplay(nextBooking.end),
+      }
+    : null;
 
-    Api.currentUser(currentBooking.userId)
-      .then((user: any) => {
-        if (!mounted) return;
-        setCurrentBooking((prev) =>
-          prev
-            ? {
-                ...prev,
-                personName:
-                  user?.fullName ||
-                  user?.name ||
-                  user?.email ||
-                  prev.personName,
-                email: user?.email || prev.email,
-                loading: false,
-              }
-            : prev
-        );
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setCurrentBooking((prev) =>
-          prev ? { ...prev, loading: false } : prev
-        );
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [currentBooking?.userId]);
-
-  const displayStartEnd = (() => {
-    if (!currentBooking || !currentBooking.time) return { start: "", end: "" };
-    try {
-      const { start, end } = buildRange(
-        currentBooking.date || new Date().toISOString().slice(0, 10),
-        currentBooking.time
+  const renderBody = () => {
+    if (!roomName) {
+      return (
+        <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 p-6 text-center text-gray-600">
+          Select a room to view live availability.
+        </div>
       );
-      return { start: formatTimeDisplay(start), end: formatTimeDisplay(end) };
-    } catch {
-      return { start: "", end: "" };
     }
-  })();
+
+    if (error) {
+      return (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      );
+    }
+
+    if (isLoading && !currentBooking && !nextBooking) {
+      return (
+        <div className="flex flex-col items-center gap-2 text-gray-500">
+          <Loader2 className="h-6 w-6 animate-spin text-red-500" />
+          <p>Checking the latest status…</p>
+        </div>
+      );
+    }
+
+    if (isBooked && currentBooking) {
+      return (
+        <div className="space-y-3">
+          <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center text-gray-700">
+              <div className="p-3 rounded-lg bg-red-200 mr-3">
+                <User className="w-6 h-6 text-red-700" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-medium">Booked By</p>
+                <p className="text-gray-900 font-semibold">
+                  {currentBooking.personName || currentBooking.email || "Unknown"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center text-gray-700">
+              <div className="p-3 rounded-lg bg-red-200 mr-3">
+                <Mail className="w-6 h-6 text-red-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-600 font-medium">
+                  Contact Email
+                </p>
+                <p className="text-gray-900 font-semibold truncate">
+                  {currentBooking.email || "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center text-gray-700">
+              <div className="p-3 rounded-lg bg-red-200 mr-3">
+                <Clock className="w-6 h-6 text-red-700" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-medium">
+                  Booking Duration
+                </p>
+                <p className="text-gray-900 font-semibold">
+                  {displayStartEnd.start} - {displayStartEnd.end}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg p-4 bg-green-100/60 shadow-sm">
+          <div className="flex items-center text-gray-700">
+            <div className="p-3 rounded-lg bg-green-200 mr-3">
+              <Clock className="w-6 h-6 text-green-700" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-600 font-medium">Current Time</p>
+              <p className="text-gray-900 font-semibold">
+                {formatTimeDisplay(nowTick)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-green-100/60 rounded-lg p-8 shadow-sm text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-200 mb-4">
+            <svg
+              className="w-10 h-10 text-green-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+          <h4 className="text-gray-900 mb-2 text-xl font-semibold">
+            Room Available
+          </h4>
+          <p className="text-gray-700 font-medium">
+            This room is ready for your next meeting
+          </p>
+        </div>
+
+        {nextWindow ? (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-white/80 p-4 text-sm text-gray-600">
+            <p className="font-semibold text-gray-900">
+              Next booking starts at {nextWindow.start}
+            </p>
+            <p>
+              {nextBooking?.booking.personName || nextBooking?.booking.email || "—"}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-white/80 p-4 text-sm text-gray-600">
+            No upcoming bookings for today.
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 h-screen flex flex-col">
@@ -224,146 +367,59 @@ export function AvailableRooms() {
         <div className="flex items-center gap-2">
           <div
             className={`w-3 h-3 rounded-full animate-pulse ${
-              isBooked ? "bg-red-500" : "bg-green-500"
+              !roomName ? "bg-gray-300" : isBooked ? "bg-red-500" : "bg-green-500"
             }`}
           ></div>
           <span
             className={`px-4 py-1.5 rounded-full ${
-              isBooked
+              !roomName
+                ? "bg-gray-100 text-gray-500"
+                : isBooked
                 ? "bg-red-100 text-red-700"
                 : "bg-green-100 text-green-700"
             }`}
           >
-            {isBooked ? "Occupied / Next" : "Available Now"}
+            {!roomName ? "Select a room" : isBooked ? "Occupied" : "Available Now"}
           </span>
         </div>
       </div>
 
       <div
         className={`border-2 rounded-xl p-8 transition-all shadow-lg ${
-          isBooked ? "border-red-400 bg-red-50" : "border-green-400 bg-green-50"
+          !roomName
+            ? "border-gray-200 bg-gray-50"
+            : isBooked
+            ? "border-red-400 bg-red-50"
+            : "border-green-400 bg-green-50"
         }`}
       >
         <div className="mb-6 pb-4 border-b-2 border-gray-200">
           <h3 className="text-gray-900 mb-3 text-2xl font-semibold">
-            {currentBooking?.roomName}
+            {roomName || "No room selected"}
           </h3>
           <span
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow-md ${
-              isBooked ? "bg-red-500" : "bg-green-500"
+              !roomName
+                ? "bg-gray-400"
+                : isBooked
+                ? "bg-red-500"
+                : "bg-green-500"
             }`}
           >
             <div
               className={`w-2 h-2 rounded-full bg-white ${
-                isBooked ? "" : "animate-pulse"
+                !roomName || isBooked ? "" : "animate-pulse"
               }`}
             ></div>
-            {isBooked
-              ? currentBooking?.time
-                ? `${displayStartEnd.start} - ${displayStartEnd.end}`
-                : "Booked"
+            {!roomName
+              ? "Awaiting selection"
+              : isBooked && displayStartEnd.start
+              ? `${displayStartEnd.start} - ${displayStartEnd.end}`
               : "Available Now"}
           </span>
         </div>
 
-        {!isBooked && (
-          <div className="rounded-lg p-4 mb-6 bg-green-100/50 shadow-sm">
-            <div className="flex items-center text-gray-700">
-              <div className="p-3 rounded-lg bg-green-200 mr-3">
-                <Clock className="w-6 h-6 text-green-700" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 font-medium">
-                  Current Time
-                </p>
-                <p className="text-gray-900 font-semibold">
-                  {formatTimeDisplay(new Date())}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isBooked && currentBooking?.time ? (
-          <div className="space-y-3">
-            <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
-              <div className="flex items-center text-gray-700">
-                <div className="p-3 rounded-lg bg-red-200 mr-3">
-                  <User className="w-6 h-6 text-red-700" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 font-medium">Booked By</p>
-                  <div className="flex items-center gap-2">
-                    {currentBooking.loading ? (
-                      <Loader2 className="w-4 h-4 text-red-600 animate-spin" />
-                    ) : null}
-                    <p className="text-gray-900 font-semibold">
-                      {currentBooking.personName ||
-                        currentBooking.userId ||
-                        "Unknown"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
-              <div className="flex items-center text-gray-700">
-                <div className="p-3 rounded-lg bg-red-200 mr-3">
-                  <Mail className="w-6 h-6 text-red-700" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-600 font-medium">
-                    Contact Email
-                  </p>
-                  <p className="text-gray-900 font-semibold truncate">
-                    {currentBooking.email || "—"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
-              <div className="flex items-center text-gray-700">
-                <div className="p-3 rounded-lg bg-red-200 mr-3">
-                  <Clock className="w-6 h-6 text-red-700" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 font-medium">
-                    Booking Duration
-                  </p>
-                  <p className="text-gray-900 font-semibold">
-                    {displayStartEnd.start} - {displayStartEnd.end}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-green-100/60 rounded-lg p-8 shadow-sm text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-200 mb-4">
-              <svg
-                className="w-10 h-10 text-green-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <h4 className="text-gray-900 mb-2 text-xl font-semibold">
-              Room Available
-            </h4>
-            <p className="text-gray-700 font-medium">
-              This room is ready for your next meeting
-            </p>
-          </div>
-        )}
+        {renderBody()}
       </div>
     </div>
   );

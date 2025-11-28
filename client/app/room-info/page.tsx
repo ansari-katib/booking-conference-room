@@ -1,12 +1,18 @@
-import RoomDetail from '@/components/room_details/RoomDetail'
-import React from 'react'
+import RoomDetail from "@/components/room_details/RoomDetail";
+import React from "react";
 
-const page = () => {
-  return (
-    <div>
-      <RoomDetail />
-    </div>
-  )
+interface RoomInfoPageProps {
+  searchParams?: {
+    room?: string;
+  };
 }
 
-export default page
+const Page = ({ searchParams }: RoomInfoPageProps) => {
+  return (
+    <div>
+      <RoomDetail initialRoom={searchParams?.room} />
+    </div>
+  );
+};
+
+export default Page;

@@ -88,17 +88,31 @@ export class BookingService {
       .sort({ date: 1, time: 1 })
       .exec();
 
-    // Join with user email
-    const bookingsWithEmail = await Promise.all(
-      bookings.map(async (b) => {
-        if (b.userId) {
-          const user = await this.userService.getUserById(b.userId);
-          const email = user?.email || null;
-          return { ...b.toObject(), email };
+    const bookingsWithUser = await Promise.all(
+      bookings.map(async (booking) => {
+        const plain = booking.toObject();
+
+        if (!booking.userId) {
+          return { ...plain, email: null, personName: null, user: null };
         }
+
+        const userDoc = await this.userService.getUserById(booking.userId);
+
+        return {
+          ...plain,
+          email: userDoc?.email ?? null,
+          personName: userDoc?.fullName ?? null,
+          user: userDoc
+            ? {
+                id: userDoc._id?.toString?.() ?? String(userDoc._id),
+                fullName: userDoc.fullName,
+                email: userDoc.email,
+              }
+            : null,
+        };
       }),
     );
 
-    return bookingsWithEmail;
+    return bookingsWithUser;
   }
 }

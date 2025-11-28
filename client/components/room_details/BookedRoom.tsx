@@ -1,20 +1,24 @@
-// ...existing code...
-import { Calendar, Clock, User, Mail, Loader2 } from "lucide-react";
+import { Clock, User, Mail, Loader2 } from "lucide-react";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { useEffect, useState } from "react";
 import { Api } from "../../lib/ApiEndpoint";
+
+interface BookedRoomsProps {
+  roomName?: string;
+}
 
 interface BookedRoomItem {
   id?: string;
   roomName: string;
   date?: string;
-  time?: string; // formatted "HH:MM - HH:MM"
+  time?: string;
   personName?: string;
   email?: string | null;
-  status?: "ongoing" | "upcoming";
+  status: "ongoing" | "upcoming";
   booked?: boolean;
   userId?: string;
-  loading?: boolean;
+  start: Date;
+  end: Date;
 }
 
 function to24HourSimple(t: string) {
@@ -62,166 +66,126 @@ function formatHHMM(d: Date) {
     .padStart(2, "0")}`;
 }
 
-export function BookedRooms() {
+function formatRangeLabel(start: Date, end: Date) {
+  return `${formatHHMM(start)} - ${formatHHMM(end)}`;
+}
+
+export function BookedRooms({ roomName }: BookedRoomsProps) {
   const [items, setItems] = useState<BookedRoomItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!roomName) {
+      setItems([]);
+      setError(null);
+      return;
+    }
+
     let mounted = true;
 
-    async function load() {
+    const load = async (showSpinner = false) => {
+      if (showSpinner) setIsLoading(true);
+      setError(null);
+
       try {
-        const data = await Api.getBookedSlotsByRoom("Board Room A");
+        const data = await Api.getBookedSlotsByRoom(roomName);
         if (!mounted) return;
         const now = new Date();
 
-        const booked = (Array.isArray(data) ? data : []).filter(
-          (b: any) => b.booked === true
-        );
-
-        // ✅ FIX: Filter out all bookings that have already finished (e <= now)
-        const futureOrOngoingBookings = booked.filter((b: any) => {
-          // Temporarily calculate the range to determine if it's over
-          const dateStr = b.date || new Date().toISOString().slice(0, 10);
-          const timeRaw = b.time || "";
-          const { e } = buildRangeForList(dateStr, timeRaw);
-          return e > now;
-        });
-
-        // initial items with loading flag for entries that have userId
-        const initial: BookedRoomItem[] = futureOrOngoingBookings.map(
-          (b: any) => {
+        const enriched = (Array.isArray(data) ? data : [])
+          .filter(Boolean)
+          .map((b: any) => {
             const dateStr = b.date || new Date().toISOString().slice(0, 10);
             const timeRaw = b.time || "";
             const { s, e } = buildRangeForList(dateStr, timeRaw);
-            const timeFormatted = `${formatHHMM(s)} - ${formatHHMM(e)}`;
+            if (e <= now) return null;
 
-            let status: BookedRoomItem["status"] = "upcoming";
-            // Check for ongoing first
-            if (now >= s && now < e) status = "ongoing";
-            // Since we filtered out past bookings, the rest are upcoming
-            // or were ongoing (if we're running late on the interval).
-            // For simplicity, we can rely on the initial 'upcoming' for non-ongoing.
+            const status: BookedRoomItem["status"] =
+              now >= s && now < e ? "ongoing" : "upcoming";
 
             return {
               id: b._id || b.id,
               roomName: b.roomName,
               date: dateStr,
-              time: timeFormatted,
-              personName: b.personName || "Unknown",
-              email: b.email || null,
+              time: formatRangeLabel(s, e),
+              personName:
+                b.personName ||
+                b.user?.fullName ||
+                b.user?.email ||
+                b.email ||
+                b.userId ||
+                "Unknown",
+              email: b.email || b.user?.email || null,
               status,
               booked: !!b.booked,
               userId: b.userId,
-              loading: !!b.userId,
+              start: s,
+              end: e,
             } as BookedRoomItem;
-          }
-        );
-
-        setItems(initial);
-
-        // fetch user info per booking using /auth/me/:id
-        await Promise.all(
-          booked.map(async (b: any) => {
-            if (!b.userId) return;
-            try {
-              const user = await Api.currentUser(b.userId);
-              if (!mounted) return;
-              setItems((prev) =>
-                prev.map((it) =>
-                  it.id === (b._id || b.id)
-                    ? {
-                        ...it,
-                        personName:
-                          user?.fullName ||
-                          user?.name ||
-                          user?.email ||
-                          it.personName,
-                        email: user?.email || it.email,
-                        loading: false,
-                      }
-                    : it
-                )
-              );
-            } catch (err) {
-              if (!mounted) return;
-              setItems((prev) =>
-                prev.map((it) =>
-                  it.id === (b._id || b.id) ? { ...it, loading: false } : it
-                )
-              );
-              console.warn("Failed to fetch user for booking", b.userId, err);
-            }
           })
-        );
-      } catch (err) {
-        console.error("Failed to load booked rooms", err);
-      }
-    }
+          .filter((item): item is BookedRoomItem => Boolean(item))
+          .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    load();
-    const t = setInterval(load, 60_000);
+        setItems(enriched);
+      } catch (err) {
+        if (!mounted) return;
+        console.error("Failed to load booked rooms", err);
+        setItems([]);
+        setError("Unable to load bookings right now.");
+      } finally {
+        if (showSpinner && mounted) setIsLoading(false);
+      }
+    };
+
+    load(true);
+    const t = setInterval(() => load(false), 60_000);
     return () => {
       mounted = false;
       clearInterval(t);
     };
-  }, []);
+  }, [roomName]);
 
-  // show only the bookings belonging to selected room
-  const SELECTED_ROOM = "Board Room A";
-  const filteredByRoom = items.filter((r) => r.roomName === SELECTED_ROOM);
-
-  // Separate ongoing and upcoming for ONLY this room
-  const ongoingRooms = filteredByRoom.filter(
-    (room) => room.status === "ongoing"
-  );
-  const upcomingRooms = filteredByRoom.filter(
-    (room) => room.status === "upcoming"
-  );
-
-  const sortedItems = [...ongoingRooms, ...upcomingRooms];
+  const ongoingBookings = items.filter((room) => room.status === "ongoing");
+  const upcomingBookings = items.filter((room) => room.status === "upcoming");
+  const currentBooking = ongoingBookings[0] ?? null;
 
   const renderRoomCard = (room: BookedRoomItem, isOngoing: boolean) => (
     <div
-      key={room.id || `${room.roomName}-${room.date}`}
-      className={`border-l-4 rounded-lg p-4 transition-all hover:shadow-md ${
+      key={room.id || `${room.roomName}-${room.date}-${room.time}`}
+      className={`border-l-4 rounded-lg p-4 transition-all ${
         isOngoing
           ? "border-red-500 bg-red-50 shadow-md"
-          : "border-red-300 bg-red-50/50"
+          : "border-amber-400 bg-amber-50"
       }`}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                isOngoing ? "bg-red-500 animate-pulse" : "bg-red-400"
-              }`}
-            ></div>
-            <span className="text-xs text-red-600 uppercase tracking-wide font-semibold">
-              {isOngoing ? "🔴 In Progress" : "Booked"}
-            </span>
-          </div>
-          <h3 className="text-gray-900 font-semibold">{room.roomName}</h3>
-        </div>
+      <div className="flex items-center gap-2 mb-4">
+        <div
+          className={`w-2 h-2 rounded-full ${
+            isOngoing ? "bg-red-500 animate-pulse" : "bg-amber-500"
+          }`}
+        ></div>
+        <span
+          className={`text-xs uppercase tracking-wide font-semibold ${
+            isOngoing ? "text-red-600" : "text-amber-600"
+          }`}
+        >
+          {isOngoing ? "In Progress" : "Next in Line"}
+        </span>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center text-gray-600 text-sm">
+      <h3 className="text-gray-900 font-semibold mb-4">{room.roomName}</h3>
+
+      <div className="space-y-3 text-sm text-gray-600">
+        <div className="flex items-center">
           <Clock className="w-4 h-4 mr-2 text-red-500" />
           <span>{room.time}</span>
         </div>
-
-        <div className="flex items-center text-gray-600 text-sm">
+        <div className="flex items-center">
           <User className="w-4 h-4 mr-2 text-red-500" />
-          <span className="flex items-center gap-2">
-            {room.loading ? (
-              <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />
-            ) : null}
-            <span>{room.personName}</span>
-          </span>
+          <span>{room.personName}</span>
         </div>
-
-        <div className="flex items-center text-gray-600 text-sm">
+        <div className="flex items-center">
           <Mail className="w-4 h-4 mr-2 text-red-500" />
           <span className="truncate">{room.email || "—"}</span>
         </div>
@@ -229,60 +193,114 @@ export function BookedRooms() {
     </div>
   );
 
+  const renderContent = () => {
+    if (!roomName) {
+      return (
+        <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-300 text-gray-500">
+          Select a room to see who is inside
+        </div>
+      );
+    }
+
+    if (isLoading && items.length === 0) {
+      return (
+        <div className="flex h-40 flex-col items-center justify-center gap-2 text-gray-500">
+          <Loader2 className="h-6 w-6 animate-spin text-red-500" />
+          <p>Loading bookings…</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8">
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-red-600">
+              In Progress
+            </h3>
+            <span className="text-xs text-gray-500">
+              {ongoingBookings.length} active
+            </span>
+          </div>
+
+          {ongoingBookings.length > 0 ? (
+            <div className="space-y-4">
+              {ongoingBookings.map((room) => renderRoomCard(room, true))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-gray-500">
+              No ongoing meetings
+            </div>
+          )}
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600">
+              Upcoming Today
+            </h3>
+            <span className="text-xs text-gray-500">
+              {upcomingBookings.length} scheduled
+            </span>
+          </div>
+
+          {upcomingBookings.length > 0 ? (
+            <div className="space-y-4">
+              {upcomingBookings.map((room) => renderRoomCard(room, false))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-gray-500">
+              No more bookings for today
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-gray-900">Booked Rooms</h2>
-        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
-          {filteredByRoom.length} Active
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-gray-900">Booked Rooms</h2>
+          <p className="text-sm text-gray-500">
+            {roomName
+              ? `Live bookings for ${roomName}`
+              : "Pick a room to see current meeting details"}
+          </p>
+        </div>
+        <span
+          className={`px-3 py-1 rounded-full text-sm font-medium ${
+            currentBooking ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {isLoading ? "Refreshing…" : ongoingBookings.length ? "In Progress" : "Idle"}
         </span>
       </div>
 
       <ScrollArea.Root className="h-[70vh] overflow-hidden">
         <ScrollArea.Viewport className="w-full h-full">
-          <div className="space-y-4 pr-4">
-            {/* Ongoing Room - Show at Top */}
-            {ongoingRooms.length > 0 && (
-              <>
-                <div className="mb-4 pb-4 border-b-2 border-red-200">
-                  <h3 className="text-sm font-bold text-red-600 uppercase tracking-widest mb-3">
-                    Currently In Progress
-                  </h3>
-                  {ongoingRooms.map((room) => renderRoomCard(room, true))}
-                </div>
-              </>
-            )}
-
-            {/* Upcoming Rooms */}
-            {upcomingRooms.length > 0 && (
-              <>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-600 uppercase tracking-widest mb-3">
-                    Upcoming Bookings
-                  </h3>
-                  <div className="space-y-4">
-                    {upcomingRooms.map((room) => renderRoomCard(room, false))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {items.length === 0 && (
-              <div className="flex items-center justify-center h-32 text-gray-500">
-                <p>No booked rooms yet</p>
-              </div>
-            )}
-          </div>
+          <div className="pr-4">{renderContent()}</div>
         </ScrollArea.Viewport>
 
         <ScrollArea.Scrollbar
-          className="flex select-none touch-none p-0.5 bg-gray-100 transition-colors duration-150 ease-out hover:bg-gray-200 data-[orientation=vertical]:w-2.5 data-[orientation=horizontal]:flex-col data-[orientation=horizontal]:h-2.5"
+          className="flex select-none touch-none p-0.5 bg-gray-100 transition-colors duration-150 ease-out hover:bg-gray-200 data-[orientation=vertical]:w-2.5"
           orientation="vertical"
         >
-          <ScrollArea.Thumb className="flex-1 bg-red-300 rounded-[10px] relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-11 before:min-h-11" />
+          <ScrollArea.Thumb className="flex-1 bg-red-300 rounded-[10px]" />
         </ScrollArea.Scrollbar>
         <ScrollArea.Corner className="bg-gray-100" />
       </ScrollArea.Root>
     </div>
   );
 }
+
+export default BookedRooms;
