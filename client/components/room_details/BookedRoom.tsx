@@ -2,9 +2,11 @@ import { Clock, User, Mail, Loader2 } from "lucide-react";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { useEffect, useState } from "react";
 import { Api } from "../../lib/ApiEndpoint";
+import { cn } from "@/lib/utils";
 
 interface BookedRoomsProps {
   roomName?: string;
+  isDarkMode?: boolean;
 }
 
 interface BookedRoomItem {
@@ -70,7 +72,7 @@ function formatRangeLabel(start: Date, end: Date) {
   return `${formatHHMM(start)} - ${formatHHMM(end)}`;
 }
 
-export function BookedRooms({ roomName }: BookedRoomsProps) {
+export function BookedRooms({ roomName, isDarkMode = false }: BookedRoomsProps) {
   const [items, setItems] = useState<BookedRoomItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,40 +155,43 @@ export function BookedRooms({ roomName }: BookedRoomsProps) {
   const renderRoomCard = (room: BookedRoomItem, isOngoing: boolean) => (
     <div
       key={room.id || `${room.roomName}-${room.date}-${room.time}`}
-      className={`border-l-4 rounded-lg p-4 transition-all ${
+      className={cn(
+        "border-l-4 rounded-lg p-3 sm:p-4 transition-all",
         isOngoing
-          ? "border-red-500 bg-red-50 shadow-md"
-          : "border-amber-400 bg-amber-50"
-      }`}
+          ? "border-destructive bg-destructive/10 dark:bg-destructive/20 shadow-md"
+          : "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
+      )}
     >
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <div
-          className={`w-2 h-2 rounded-full ${
-            isOngoing ? "bg-red-500 animate-pulse" : "bg-amber-500"
-          }`}
+          className={cn(
+            "w-2 h-2 rounded-full",
+            isOngoing ? "bg-destructive animate-pulse" : "bg-amber-500"
+          )}
         ></div>
         <span
-          className={`text-xs uppercase tracking-wide font-semibold ${
-            isOngoing ? "text-red-600" : "text-amber-600"
-          }`}
+          className={cn(
+            "text-xs uppercase tracking-wide font-semibold",
+            isOngoing ? "text-destructive" : "text-amber-600 dark:text-amber-400"
+          )}
         >
           {isOngoing ? "In Progress" : "Next in Line"}
         </span>
       </div>
 
-      <h3 className="text-gray-900 font-semibold mb-4">{room.roomName}</h3>
+      <h3 className="font-semibold mb-3 sm:mb-4 text-foreground text-sm sm:text-base">{room.roomName}</h3>
 
-      <div className="space-y-3 text-sm text-gray-600">
-        <div className="flex items-center">
-          <Clock className="w-4 h-4 mr-2 text-red-500" />
+      <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
           <span>{room.time}</span>
         </div>
-        <div className="flex items-center">
-          <User className="w-4 h-4 mr-2 text-red-500" />
-          <span>{room.personName}</span>
+        <div className="flex items-center gap-2">
+          <User className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+          <span className="truncate">{room.personName}</span>
         </div>
-        <div className="flex items-center">
-          <Mail className="w-4 h-4 mr-2 text-red-500" />
+        <div className="flex items-center gap-2">
+          <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
           <span className="truncate">{room.email || "—"}</span>
         </div>
       </div>
@@ -196,7 +201,7 @@ export function BookedRooms({ roomName }: BookedRoomsProps) {
   const renderContent = () => {
     if (!roomName) {
       return (
-        <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-300 text-gray-500">
+        <div className="flex h-32 sm:h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-muted-foreground text-sm text-center px-4">
           Select a room to see who is inside
         </div>
       );
@@ -204,39 +209,39 @@ export function BookedRooms({ roomName }: BookedRoomsProps) {
 
     if (isLoading && items.length === 0) {
       return (
-        <div className="flex h-40 flex-col items-center justify-center gap-2 text-gray-500">
-          <Loader2 className="h-6 w-6 animate-spin text-red-500" />
-          <p>Loading bookings…</p>
+        <div className="flex h-32 sm:h-40 flex-col items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-destructive" />
+          <p className="text-sm">Loading bookings…</p>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 dark:bg-destructive/20 p-3 sm:p-4 text-sm text-destructive">
           {error}
         </div>
       );
     }
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-red-600">
+            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-destructive">
               In Progress
             </h3>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {ongoingBookings.length} active
             </span>
           </div>
 
           {ongoingBookings.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {ongoingBookings.map((room) => renderRoomCard(room, true))}
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-gray-500">
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 py-6 sm:py-8 text-center text-muted-foreground text-sm">
               No ongoing meetings
             </div>
           )}
@@ -244,20 +249,20 @@ export function BookedRooms({ roomName }: BookedRoomsProps) {
 
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600">
+            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-muted-foreground">
               Upcoming Today
             </h3>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {upcomingBookings.length} scheduled
             </span>
           </div>
 
           {upcomingBookings.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {upcomingBookings.map((room) => renderRoomCard(room, false))}
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-gray-500">
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 py-6 sm:py-8 text-center text-muted-foreground text-sm">
               No more bookings for today
             </div>
           )}
@@ -267,37 +272,40 @@ export function BookedRooms({ roomName }: BookedRoomsProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h2 className="text-gray-900">Booked Rooms</h2>
-          <p className="text-sm text-gray-500">
+    <div className="rounded-lg shadow-sm border border-border bg-card p-4 sm:p-6 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-foreground text-lg sm:text-xl font-semibold mb-1">Booked Rooms</h2>
+          <p className="text-sm text-muted-foreground">
             {roomName
               ? `Live bookings for ${roomName}`
               : "Pick a room to see current meeting details"}
           </p>
         </div>
         <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${
-            currentBooking ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
-          }`}
+          className={cn(
+            "px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium shrink-0",
+            currentBooking
+              ? "bg-destructive/10 text-destructive dark:bg-destructive/20"
+              : "bg-muted text-muted-foreground"
+          )}
         >
           {isLoading ? "Refreshing…" : ongoingBookings.length ? "In Progress" : "Idle"}
         </span>
       </div>
 
-      <ScrollArea.Root className="h-[70vh] overflow-hidden">
+      <ScrollArea.Root className="flex-1 overflow-hidden min-h-0">
         <ScrollArea.Viewport className="w-full h-full">
-          <div className="pr-4">{renderContent()}</div>
+          <div className="pr-2 sm:pr-4">{renderContent()}</div>
         </ScrollArea.Viewport>
 
         <ScrollArea.Scrollbar
-          className="flex select-none touch-none p-0.5 bg-gray-100 transition-colors duration-150 ease-out hover:bg-gray-200 data-[orientation=vertical]:w-2.5"
+          className="flex select-none touch-none p-0.5 bg-muted transition-colors duration-150 ease-out hover:bg-muted/80 data-[orientation=vertical]:w-2.5"
           orientation="vertical"
         >
-          <ScrollArea.Thumb className="flex-1 bg-red-300 rounded-[10px]" />
+          <ScrollArea.Thumb className="flex-1 bg-destructive/30 rounded-[10px] hover:bg-destructive/40" />
         </ScrollArea.Scrollbar>
-        <ScrollArea.Corner className="bg-gray-100" />
+        <ScrollArea.Corner className="bg-muted" />
       </ScrollArea.Root>
     </div>
   );

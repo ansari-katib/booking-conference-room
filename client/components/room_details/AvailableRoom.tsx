@@ -3,6 +3,7 @@
 import { Clock, User, Mail, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Api } from "../../lib/ApiEndpoint";
+import { cn } from "@/lib/utils";
 
 interface Booking {
   id?: string;
@@ -18,6 +19,7 @@ interface Booking {
 
 interface AvailableRoomsProps {
   roomName?: string;
+  isDarkMode?: boolean;
 }
 
 function to24Hour(timePart: string) {
@@ -82,7 +84,7 @@ function formatTimeDisplay(date: Date) {
     .padStart(2, "0")} ${period}`;
 }
 
-export function AvailableRooms({ roomName }: AvailableRoomsProps) {
+export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [currentBooking, setCurrentBooking] = useState<Booking | null>(null);
   const [nextBooking, setNextBooking] = useState<{
@@ -227,7 +229,7 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
   const renderBody = () => {
     if (!roomName) {
       return (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 p-6 text-center text-gray-600">
+        <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 sm:p-6 text-center text-muted-foreground text-sm">
           Select a room to view live availability.
         </div>
       );
@@ -235,7 +237,7 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
 
     if (error) {
       return (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 dark:bg-destructive/20 p-3 sm:p-4 text-sm text-destructive">
           {error}
         </div>
       );
@@ -243,9 +245,9 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
 
     if (isLoading && !currentBooking && !nextBooking) {
       return (
-        <div className="flex flex-col items-center gap-2 text-gray-500">
-          <Loader2 className="h-6 w-6 animate-spin text-red-500" />
-          <p>Checking the latest status…</p>
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-destructive" />
+          <p className="text-sm">Checking the latest status…</p>
         </div>
       );
     }
@@ -253,46 +255,46 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
     if (isBooked && currentBooking) {
       return (
         <div className="space-y-3">
-          <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
-            <div className="flex items-center text-gray-700">
-              <div className="p-3 rounded-lg bg-red-200 mr-3">
-                <User className="w-6 h-6 text-red-700" />
+          <div className="rounded-lg p-3 sm:p-4 shadow-sm bg-destructive/10 dark:bg-destructive/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 rounded-lg bg-destructive/20 shrink-0">
+                <User className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
               </div>
-              <div>
-                <p className="text-xs text-gray-600 font-medium">Booked By</p>
-                <p className="text-gray-900 font-semibold">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Booked By</p>
+                <p className="font-semibold text-foreground truncate">
                   {currentBooking.personName || currentBooking.email || "Unknown"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
-            <div className="flex items-center text-gray-700">
-              <div className="p-3 rounded-lg bg-red-200 mr-3">
-                <Mail className="w-6 h-6 text-red-700" />
+          <div className="rounded-lg p-3 sm:p-4 shadow-sm bg-destructive/10 dark:bg-destructive/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 rounded-lg bg-destructive/20 shrink-0">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-600 font-medium">
+                <p className="text-xs font-medium text-muted-foreground mb-1">
                   Contact Email
                 </p>
-                <p className="text-gray-900 font-semibold truncate">
+                <p className="font-semibold text-foreground truncate">
                   {currentBooking.email || "—"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-red-100/60 rounded-lg p-4 shadow-sm">
-            <div className="flex items-center text-gray-700">
-              <div className="p-3 rounded-lg bg-red-200 mr-3">
-                <Clock className="w-6 h-6 text-red-700" />
+          <div className="rounded-lg p-3 sm:p-4 shadow-sm bg-destructive/10 dark:bg-destructive/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 rounded-lg bg-destructive/20 shrink-0">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
               </div>
-              <div>
-                <p className="text-xs text-gray-600 font-medium">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-muted-foreground mb-1">
                   Booking Duration
                 </p>
-                <p className="text-gray-900 font-semibold">
+                <p className="font-semibold text-foreground">
                   {displayStartEnd.start} - {displayStartEnd.end}
                 </p>
               </div>
@@ -303,25 +305,25 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
     }
 
     return (
-      <div className="space-y-4">
-        <div className="rounded-lg p-4 bg-green-100/60 shadow-sm">
-          <div className="flex items-center text-gray-700">
-            <div className="p-3 rounded-lg bg-green-200 mr-3">
-              <Clock className="w-6 h-6 text-green-700" />
+      <div className="space-y-3 sm:space-y-4">
+        <div className="rounded-lg p-3 sm:p-4 shadow-sm bg-green-500/10 dark:bg-green-500/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 sm:p-3 rounded-lg bg-green-500/20 shrink-0">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-600 font-medium">Current Time</p>
-              <p className="text-gray-900 font-semibold">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Current Time</p>
+              <p className="font-semibold text-foreground text-sm sm:text-base">
                 {formatTimeDisplay(nowTick)}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-green-100/60 rounded-lg p-8 shadow-sm text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-200 mb-4">
+        <div className="rounded-lg p-6 sm:p-8 shadow-sm text-center bg-green-500/10 dark:bg-green-500/20">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-3 sm:mb-4 bg-green-500/20">
             <svg
-              className="w-10 h-10 text-green-700"
+              className="w-8 h-8 sm:w-10 sm:h-10 text-green-700 dark:text-green-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -334,25 +336,25 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
               />
             </svg>
           </div>
-          <h4 className="text-gray-900 mb-2 text-xl font-semibold">
+          <h4 className="mb-2 text-lg sm:text-xl font-semibold text-foreground">
             Room Available
           </h4>
-          <p className="text-gray-700 font-medium">
+          <p className="font-medium text-muted-foreground text-sm sm:text-base">
             This room is ready for your next meeting
           </p>
         </div>
 
         {nextWindow ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white/80 p-4 text-sm text-gray-600">
-            <p className="font-semibold text-gray-900">
+          <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 sm:p-4 text-sm">
+            <p className="font-semibold text-foreground mb-1">
               Next booking starts at {nextWindow.start}
             </p>
-            <p>
+            <p className="text-muted-foreground">
               {nextBooking?.booking.personName || nextBooking?.booking.email || "—"}
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white/80 p-4 text-sm text-gray-600">
+          <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 sm:p-4 text-sm text-muted-foreground">
             No upcoming bookings for today.
           </div>
         )}
@@ -361,23 +363,29 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 h-screen flex flex-col">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-gray-900">Room Status</h2>
+    <div className="rounded-lg shadow-sm border border-border bg-card p-4 sm:p-6 md:p-8 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6 md:mb-8">
+        <h2 className="text-foreground text-lg sm:text-xl font-semibold">Room Status</h2>
         <div className="flex items-center gap-2">
           <div
-            className={`w-3 h-3 rounded-full animate-pulse ${
-              !roomName ? "bg-gray-300" : isBooked ? "bg-red-500" : "bg-green-500"
-            }`}
+            className={cn(
+              "w-2 h-2 sm:w-3 sm:h-3 rounded-full",
+              !roomName
+                ? "bg-muted-foreground"
+                : isBooked
+                ? "bg-destructive animate-pulse"
+                : "bg-green-500 animate-pulse"
+            )}
           ></div>
           <span
-            className={`px-4 py-1.5 rounded-full ${
+            className={cn(
+              "px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium",
               !roomName
-                ? "bg-gray-100 text-gray-500"
+                ? "bg-muted text-muted-foreground"
                 : isBooked
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
+                ? "bg-destructive/10 text-destructive dark:bg-destructive/20"
+                : "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+            )}
           >
             {!roomName ? "Select a room" : isBooked ? "Occupied" : "Available Now"}
           </span>
@@ -385,31 +393,34 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
       </div>
 
       <div
-        className={`border-2 rounded-xl p-8 transition-all shadow-lg ${
+        className={cn(
+          "border-2 rounded-xl p-4 sm:p-6 md:p-8 transition-all shadow-lg flex-1 flex flex-col",
           !roomName
-            ? "border-gray-200 bg-gray-50"
+            ? "border-border bg-muted/30"
             : isBooked
-            ? "border-red-400 bg-red-50"
-            : "border-green-400 bg-green-50"
-        }`}
+            ? "border-destructive/50 bg-destructive/10 dark:bg-destructive/20"
+            : "border-green-500/50 bg-green-500/10 dark:bg-green-500/20"
+        )}
       >
-        <div className="mb-6 pb-4 border-b-2 border-gray-200">
-          <h3 className="text-gray-900 mb-3 text-2xl font-semibold">
+        <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b-2 border-border">
+          <h3 className="mb-2 sm:mb-3 text-xl sm:text-2xl font-semibold text-foreground">
             {roomName || "No room selected"}
           </h3>
           <span
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow-md ${
+            className={cn(
+              "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white shadow-md text-sm sm:text-base",
               !roomName
-                ? "bg-gray-400"
+                ? "bg-muted-foreground"
                 : isBooked
-                ? "bg-red-500"
+                ? "bg-destructive"
                 : "bg-green-500"
-            }`}
+            )}
           >
             <div
-              className={`w-2 h-2 rounded-full bg-white ${
+              className={cn(
+                "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white",
                 !roomName || isBooked ? "" : "animate-pulse"
-              }`}
+              )}
             ></div>
             {!roomName
               ? "Awaiting selection"
@@ -419,7 +430,7 @@ export function AvailableRooms({ roomName }: AvailableRoomsProps) {
           </span>
         </div>
 
-        {renderBody()}
+        <div className="flex-1 min-h-0">{renderBody()}</div>
       </div>
     </div>
   );
