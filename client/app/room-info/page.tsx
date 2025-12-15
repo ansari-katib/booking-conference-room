@@ -2,15 +2,16 @@ import RoomDetail from "@/components/room_details/RoomDetail";
 import React from "react";
 
 interface RoomInfoPageProps {
-  searchParams?: {
+  searchParams: Promise<{
     room?: string;
-  };
+  }>;
 }
 
-const Page = ({ searchParams }: RoomInfoPageProps) => {
+const Page = async ({ searchParams }: RoomInfoPageProps) => {
+  const param = await searchParams;
   return (
     <div>
-      <RoomDetail initialRoom={searchParams?.room} />
+      <RoomDetail initialRoom={param?.room} />
     </div>
   );
 };

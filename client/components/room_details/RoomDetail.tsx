@@ -33,6 +33,19 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [roomLoadError, setRoomLoadError] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    setNow(new Date());
+
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -50,13 +63,15 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
     Api.getAllRooms()
       .then((data) => {
         if (!active) return;
-        const normalized = (Array.isArray(data) ? data : []).map((room: any) => ({
-          id: room._id || room.id || room.name,
-          name: room.name,
-          capacity: room.capacity,
-          floor: room.floor,
-          amenities: room.amenities || [],
-        }));
+        const normalized = (Array.isArray(data) ? data : []).map(
+          (room: any) => ({
+            id: room._id || room.id || room.name,
+            name: room.name,
+            capacity: room.capacity,
+            floor: room.floor,
+            amenities: room.amenities || [],
+          })
+        );
 
         setRooms(normalized);
         setSelectedRoom((prev) => {
@@ -106,7 +121,10 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
       <header className="border-b border-border bg-card transition-colors px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-1 flex-1 min-w-0">
-            <h1 className="text-foreground text-lg sm:text-xl md:text-2xl font-semibold">Conference Room Booking</h1>
+            <h1 className="text-foreground text-lg sm:text-xl md:text-2xl font-semibold">
+              Conference Room Booking
+            </h1>
+
             <p className="text-muted-foreground text-sm sm:text-base">
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
@@ -114,15 +132,28 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
                 month: "long",
                 day: "numeric",
               })}
+              <span className="px-2 text-green-500">
+                {new Date().toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  // second: "2-digit",
+                  hour12: true,
+                })}
+              </span>
             </p>
           </div>
+
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="shrink-0"
           >
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {isDarkMode ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
           </Button>
         </div>
 
@@ -132,7 +163,8 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
               Currently viewing
             </p>
             <p className="text-lg sm:text-xl font-semibold text-foreground truncate">
-              {selectedRoom || (isLoadingRooms ? "Loading rooms..." : "Select a room")}
+              {selectedRoom ||
+                (isLoadingRooms ? "Loading rooms..." : "Select a room")}
             </p>
             {roomLoadError ? (
               <p className="text-sm text-destructive mt-1">{roomLoadError}</p>
@@ -160,19 +192,25 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
         {activeRoom ? (
           <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div className="rounded-lg border border-border bg-muted/50 p-3 sm:p-4">
-              <p className="text-xs uppercase text-muted-foreground mb-1">Capacity</p>
+              <p className="text-xs uppercase text-muted-foreground mb-1">
+                Capacity
+              </p>
               <p className="text-base sm:text-lg font-semibold text-foreground">
                 {activeRoom.capacity} people
               </p>
             </div>
             <div className="rounded-lg border border-border bg-muted/50 p-3 sm:p-4">
-              <p className="text-xs uppercase text-muted-foreground mb-1">Floor</p>
+              <p className="text-xs uppercase text-muted-foreground mb-1">
+                Floor
+              </p>
               <p className="text-base sm:text-lg font-semibold text-foreground">
                 Level {activeRoom.floor}
               </p>
             </div>
             <div className="rounded-lg border border-border bg-muted/50 p-3 sm:p-4 sm:col-span-2 lg:col-span-1">
-              <p className="text-xs uppercase text-muted-foreground mb-1">Amenities</p>
+              <p className="text-xs uppercase text-muted-foreground mb-1">
+                Amenities
+              </p>
               <p className="text-sm sm:text-base font-medium text-foreground">
                 {activeRoom.amenities.length
                   ? activeRoom.amenities.join(", ")
@@ -185,10 +223,16 @@ export default function RoomDetail({ initialRoom }: RoomDetailProps) {
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 p-4 sm:p-6 md:p-8 lg:grid-cols-3 min-h-0">
         <div className="flex flex-col min-h-0 lg:col-span-1">
-          <BookedRooms roomName={selectedRoom || undefined} isDarkMode={isDarkMode} />
+          <BookedRooms
+            roomName={selectedRoom || undefined}
+            isDarkMode={isDarkMode}
+          />
         </div>
         <div className="flex flex-col min-h-0 lg:col-span-2">
-          <AvailableRooms roomName={selectedRoom || undefined} isDarkMode={isDarkMode} />
+          <AvailableRooms
+            roomName={selectedRoom || undefined}
+            isDarkMode={isDarkMode}
+          />
         </div>
       </div>
     </div>
