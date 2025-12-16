@@ -1,4 +1,4 @@
-import { Clock, User, Mail, Loader2 } from "lucide-react";
+import { Clock, User, Mail, Loader2, Calendar } from "lucide-react";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { useEffect, useState } from "react";
 import { Api } from "../../lib/ApiEndpoint";
@@ -183,8 +183,12 @@ export function BookedRooms({ roomName, isDarkMode = false }: BookedRoomsProps) 
 
       <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
+          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+          <span>{room.date}</span>
+        </div>
+        <div className="flex items-center gap-2">
           <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
-          <span>{room.time}</span>
+          <span>{room.time}{" "}{room.date}</span>
         </div>
         <div className="flex items-center gap-2">
           <User className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
