@@ -188,7 +188,7 @@ export function BookedRooms({ roomName, isDarkMode = false }: BookedRoomsProps) 
         </div>
         <div className="flex items-center gap-2">
           <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
-          <span>{room.time}{" "}{room.date}</span>
+          <span>{room.time}</span>
         </div>
         <div className="flex items-center gap-2">
           <User className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
