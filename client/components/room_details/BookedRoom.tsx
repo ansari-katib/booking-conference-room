@@ -72,7 +72,10 @@ function formatRangeLabel(start: Date, end: Date) {
   return `${formatHHMM(start)} - ${formatHHMM(end)}`;
 }
 
-export function BookedRooms({ roomName, isDarkMode = false }: BookedRoomsProps) {
+export function BookedRooms({
+  roomName,
+  isDarkMode = false,
+}: BookedRoomsProps) {
   const [items, setItems] = useState<BookedRoomItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,27 +162,31 @@ export function BookedRooms({ roomName, isDarkMode = false }: BookedRoomsProps) 
         "border-l-4 rounded-lg p-3 sm:p-4 transition-all",
         isOngoing
           ? "border-destructive bg-destructive/10 dark:bg-destructive/20 shadow-md"
-          : "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
+          : "border-amber-500 bg-amber-50 dark:bg-amber-950/30",
       )}
     >
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <div
           className={cn(
             "w-2 h-2 rounded-full",
-            isOngoing ? "bg-destructive animate-pulse" : "bg-amber-500"
+            isOngoing ? "bg-destructive animate-pulse" : "bg-amber-500",
           )}
         ></div>
         <span
           className={cn(
             "text-xs uppercase tracking-wide font-semibold",
-            isOngoing ? "text-destructive" : "text-amber-600 dark:text-amber-400"
+            isOngoing
+              ? "text-destructive"
+              : "text-amber-600 dark:text-amber-400",
           )}
         >
           {isOngoing ? "In Progress" : "Next in Line"}
         </span>
       </div>
 
-      <h3 className="font-semibold mb-3 sm:mb-4 text-foreground text-sm sm:text-base">{room.roomName}</h3>
+      <h3 className="font-semibold mb-3 sm:mb-4 text-foreground text-sm sm:text-base">
+        {room.roomName}
+      </h3>
 
       <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
@@ -276,40 +283,38 @@ export function BookedRooms({ roomName, isDarkMode = false }: BookedRoomsProps) 
   };
 
   return (
-    <div className="rounded-lg shadow-sm border border-border bg-card p-4 sm:p-6 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+    <div className="rounded-lg shadow-sm border border-border bg-card p-4 h-full flex flex-col overflow-hidden">
+      <div className="shrink-0 flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
-          <h2 className="text-foreground text-lg sm:text-xl font-semibold mb-1">Booked Rooms</h2>
-          <p className="text-sm text-muted-foreground">
-            {roomName
-              ? `Live bookings for ${roomName}`
-              : "Pick a room to see current meeting details"}
+          <h2 className="text-foreground text-base sm:text-lg font-semibold">
+            Booked Rooms
+          </h2>
+          <p className="text-xs text-muted-foreground truncate">
+            Live schedule for {roomName || "..."}
           </p>
         </div>
         <span
           className={cn(
-            "px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium shrink-0",
-            currentBooking
-              ? "bg-destructive/10 text-destructive dark:bg-destructive/20"
-              : "bg-muted text-muted-foreground"
+            "px-2 py-1 rounded-full text-[10px] font-medium shrink-0 ml-2",
+            ongoingBookings.length
+              ? "bg-destructive/10 text-destructive"
+              : "bg-muted text-muted-foreground",
           )}
         >
-          {isLoading ? "Refreshing…" : ongoingBookings.length ? "In Progress" : "Idle"}
+          {isLoading ? "..." : ongoingBookings.length ? "In Progress" : "Idle"}
         </span>
       </div>
 
-      <ScrollArea.Root className="flex-1 overflow-hidden min-h-0">
-        <ScrollArea.Viewport className="w-full h-full">
-          <div className="pr-2 sm:pr-4">{renderContent()}</div>
+      <ScrollArea.Root className="flex-1 min-h-0">
+        <ScrollArea.Viewport className="h-full w-full">
+          <div className="pr-3">
+            {/* ... renderContent() contents ... */}
+            {renderContent()}
+          </div>
         </ScrollArea.Viewport>
-
-        <ScrollArea.Scrollbar
-          className="flex select-none touch-none p-0.5 bg-muted transition-colors duration-150 ease-out hover:bg-muted/80 data-[orientation=vertical]:w-2.5"
-          orientation="vertical"
-        >
-          <ScrollArea.Thumb className="flex-1 bg-destructive/30 rounded-[10px] hover:bg-destructive/40" />
+        <ScrollArea.Scrollbar className="w-1.5 bg-muted" orientation="vertical">
+          <ScrollArea.Thumb className="bg-destructive/30 rounded-full" />
         </ScrollArea.Scrollbar>
-        <ScrollArea.Corner className="bg-muted" />
       </ScrollArea.Root>
     </div>
   );

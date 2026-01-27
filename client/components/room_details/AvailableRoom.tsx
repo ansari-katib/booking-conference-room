@@ -84,7 +84,10 @@ function formatTimeDisplay(date: Date) {
     .padStart(2, "0")} ${period}`;
 }
 
-export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsProps) {
+export function AvailableRooms({
+  roomName,
+  isDarkMode = false,
+}: AvailableRoomsProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [currentBooking, setCurrentBooking] = useState<Booking | null>(null);
   const [nextBooking, setNextBooking] = useState<{
@@ -182,11 +185,11 @@ export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsP
         })
         .filter(
           (entry): entry is { booking: Booking; start: Date; end: Date } =>
-            entry !== null && entry.end > now
+            entry !== null && entry.end > now,
         );
 
       const ongoing = todaysBookings.find(
-        (entry) => now >= entry.start && now < entry.end
+        (entry) => now >= entry.start && now < entry.end,
       );
 
       const next =
@@ -261,9 +264,13 @@ export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsP
                 <User className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Booked By</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  Booked By
+                </p>
                 <p className="font-semibold text-foreground truncate">
-                  {currentBooking.personName || currentBooking.email || "Unknown"}
+                  {currentBooking.personName ||
+                    currentBooking.email ||
+                    "Unknown"}
                 </p>
               </div>
             </div>
@@ -312,7 +319,9 @@ export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsP
               <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Current Time</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Current Time
+              </p>
               <p className="font-semibold text-foreground text-sm sm:text-base">
                 {formatTimeDisplay(nowTick)}
               </p>
@@ -350,7 +359,9 @@ export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsP
               Next booking starts at {nextWindow.start}
             </p>
             <p className="text-muted-foreground">
-              {nextBooking?.booking.personName || nextBooking?.booking.email || "—"}
+              {nextBooking?.booking.personName ||
+                nextBooking?.booking.email ||
+                "—"}
             </p>
           </div>
         ) : (
@@ -363,74 +374,65 @@ export function AvailableRooms({ roomName, isDarkMode = false }: AvailableRoomsP
   };
 
   return (
-    <div className="rounded-lg shadow-sm border border-border bg-card p-4 sm:p-6 md:p-8 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6 md:mb-8">
-        <h2 className="text-foreground text-lg sm:text-xl font-semibold">Room Status</h2>
+    <div className="rounded-lg shadow-sm border border-border bg-card p-4 sm:p-6 h-full flex flex-col overflow-hidden">
+      <div className="shrink-0 flex items-center justify-between gap-2 mb-4">
+        <h2 className="text-foreground text-base sm:text-lg font-semibold">
+          Room Status
+        </h2>
         <div className="flex items-center gap-2">
-          <div
-            className={cn(
-              "w-2 h-2 sm:w-3 sm:h-3 rounded-full",
-              !roomName
-                ? "bg-muted-foreground"
-                : isBooked
-                ? "bg-destructive animate-pulse"
-                : "bg-green-500 animate-pulse"
-            )}
-          ></div>
           <span
             className={cn(
-              "px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium",
+              "px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium",
               !roomName
                 ? "bg-muted text-muted-foreground"
                 : isBooked
-                ? "bg-destructive/10 text-destructive dark:bg-destructive/20"
-                : "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-green-500/10 text-green-600",
             )}
           >
-            {!roomName ? "Select a room" : isBooked ? "Occupied" : "Available Now"}
+            {!roomName
+              ? "Select room"
+              : isBooked
+                ? "Occupied"
+                : "Available Now"}
           </span>
+          <div
+            className={cn(
+              "w-2 h-2 rounded-full",
+              !roomName
+                ? "bg-muted-foreground"
+                : isBooked
+                  ? "bg-destructive animate-pulse"
+                  : "bg-green-500 animate-pulse",
+            )}
+          ></div>
         </div>
       </div>
 
       <div
         className={cn(
-          "border-2 rounded-xl p-4 sm:p-6 md:p-8 transition-all shadow-lg flex-1 flex flex-col",
+          "flex-1 min-h-0 border-2 rounded-xl flex flex-col transition-all overflow-hidden",
           !roomName
             ? "border-border bg-muted/30"
             : isBooked
-            ? "border-destructive/50 bg-destructive/10 dark:bg-destructive/20"
-            : "border-green-500/50 bg-green-500/10 dark:bg-green-500/20"
+              ? "border-destructive/30 bg-destructive/5"
+              : "border-green-500/30 bg-green-500/5",
         )}
       >
-        <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b-2 border-border">
-          <h3 className="mb-2 sm:mb-3 text-xl sm:text-2xl font-semibold text-foreground">
+        {/* Fixed Sub-Header */}
+        <div className="shrink-0 p-4 border-b border-border/50">
+          <h3 className="text-lg font-bold text-foreground truncate">
             {roomName || "No room selected"}
           </h3>
-          <span
-            className={cn(
-              "inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white shadow-md text-sm sm:text-base",
-              !roomName
-                ? "bg-muted-foreground"
-                : isBooked
-                ? "bg-destructive"
-                : "bg-green-500"
-            )}
-          >
-            <div
-              className={cn(
-                "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white",
-                !roomName || isBooked ? "" : "animate-pulse"
-              )}
-            ></div>
-            {!roomName
-              ? "Awaiting selection"
-              : isBooked && displayStartEnd.start
+          <p className="text-xs font-medium text-muted-foreground">
+            {isBooked
               ? `${displayStartEnd.start} - ${displayStartEnd.end}`
-              : "Available Now"}
-          </span>
+              : "Open for booking"}
+          </p>
         </div>
 
-        <div className="flex-1 min-h-0">{renderBody()}</div>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">{renderBody()}</div>
       </div>
     </div>
   );
